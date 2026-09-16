@@ -9,6 +9,24 @@ Reusable files for starting future Codex software projects.
 4. Let Codex inspect the project read-only before creating project-local governance.
 5. Once created, the project's own files become authoritative.
 
+## Canonical routing
+
+Canonical repository: https://github.com/matrakalaka/codex-project-bootstrap
+
+Canonical bootstrap entry point: `GLOBAL_PROJECT_BOOTSTRAP.md`
+
+When Codex is given this repository URL for use against another project:
+
+1. Read `GLOBAL_PROJECT_BOOTSTRAP.md` first.
+2. Follow its READ-ONLY discovery workflow.
+3. Discover and respect the target project's existing authority.
+4. Keep the global bootstrap rules subordinate to established project authority.
+5. Stop at the human-approval gate before modifying the target project.
+
+Recommended short launcher instruction:
+
+> Initialize this project using the canonical bootstrap repository: https://github.com/matrakalaka/codex-project-bootstrap. Read and follow `GLOBAL_PROJECT_BOOTSTRAP.md` as the canonical entry point. Start with read-only discovery, make no changes, and stop at the human-approval gate with the `PROJECT BOOTSTRAP ASSESSMENT`.
+
 ## Core project-local files
 Usually:
 - AGENTS.md

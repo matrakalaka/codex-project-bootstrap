@@ -5,6 +5,13 @@ Use a consistent engineering, governance, documentation, validation, and handoff
 
 This is a default. It does not override existing project authority.
 
+## 0. CANONICAL ENTRY POINT
+
+When this repository is referenced for project initialization or assessment,
+read `GLOBAL_PROJECT_BOOTSTRAP.md` first. This file defines the bootstrap
+starting point, but target-project authority remains superior and must be
+discovered and respected.
+
 ## 1. CORE PROJECT FILES
 For substantial projects, normally establish:
 - AGENTS.md
