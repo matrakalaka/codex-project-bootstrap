@@ -63,6 +63,42 @@ Do not overwrite good project conventions.
 
 If missing, propose the minimum required project-local files.
 
+## 4A. DELEGATION DISCOVERY AND ADOPTION
+After discovering project authority, assess delegation read-only. Delegation is
+optional: choose `SINGLE_AGENT` or `DELEGATED` based on task complexity, risk,
+independence needs, and coordination cost.
+
+Discover:
+- whether delegation is already present;
+- whether its authority is compatible;
+- existing agent, review, verification, and enforcement capabilities;
+- project-specific delegation risks and conflicts.
+
+Classify capabilities as `ALREADY_HAVE`, `REUSE_EXISTING`, `REAL_GAP`,
+`DUPLICATE`, `OPTIONAL`, `UNNECESSARY`, or `CONFLICTS_WITH_AUTHORITY`.
+
+Return an adoption assessment containing:
+```text
+Delegation Already Present:
+Delegation Authority Compatible:
+Existing Agent Capabilities:
+Existing Review Capabilities:
+Existing Verification Capabilities:
+Existing Enforcement:
+Project-Specific Risks:
+Recommended Delegation Adoption:
+Conflicts:
+Files Recommended:
+Tools Recommended:
+Human Approval Required:
+```
+
+Propose adoption only when compatible with existing project authority. After
+human approval, create or adapt a project-local
+`AGENT_DELEGATION_PLAYBOOK.md` only when justified, using the global
+`AGENT_DELEGATION_STANDARD.md` and its project template. Never create or copy
+the playbook automatically merely because the global standard exists.
+
 ## 5. KNOWN-GOOD BASELINE
 Before large changes, establish what currently works using evidence such as:
 - tests
