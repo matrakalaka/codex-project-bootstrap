@@ -1,0 +1,19 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Local editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local/generated artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+coverage/
+dist/
+build/
