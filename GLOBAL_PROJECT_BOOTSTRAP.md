@@ -8,9 +8,17 @@ This is a default. It does not override existing project authority.
 ## 0. CANONICAL ENTRY POINT
 
 When this repository is referenced for project initialization or assessment,
-read `GLOBAL_PROJECT_BOOTSTRAP.md` first. This file defines the bootstrap
-starting point, but target-project authority remains superior and must be
-discovered and respected.
+use the canonical repository at
+`https://github.com/matrakalaka/codex-project-bootstrap` as the bootstrap
+source of truth, and read its `GLOBAL_PROJECT_BOOTSTRAP.md` first. This file
+defines the bootstrap starting point, but target-project authority remains
+superior and must be discovered and respected.
+
+A local copy of `GLOBAL_PROJECT_BOOTSTRAP.md` is only a convenience copy. It
+must not be treated as independent authority or silently preferred merely
+because it exists. If a local copy is used, explicitly verify it against the
+canonical repository/revision first. Report any material divergence, and do
+not overwrite or delete the local copy automatically during discovery.
 
 ## 1. CORE PROJECT FILES
 For substantial projects, normally establish:
@@ -44,6 +52,38 @@ Source truth wins when indexed/advisory information is stale.
 
 ## 3. FIRST CONTACT WITH A PROJECT
 Start READ-ONLY.
+
+Before broad discovery, establish the intended target repository identity and
+authoritative root using bounded evidence:
+
+- explicit user target and current working directory
+- current Git root
+- nested Git repository boundaries
+- Git origin/remotes
+- existing project authority files
+- workspace layout
+
+Do not automatically prefer the outer repository, a nested repository, the
+current directory, or the first Git root found. If the evidence conflicts or
+the target identity is ambiguous, surface the ambiguity and stop or request
+clarification when necessary. Do not perform broad discovery across multiple
+candidate roots.
+
+After the canonical bootstrap source and target root are established, use
+this discovery order:
+
+CANONICAL BOOTSTRAP SOURCE
+→ TARGET REPOSITORY IDENTITY / ROOT
+→ TARGET PROJECT AUTHORITY
+→ BOUNDED PROJECT DISCOVERY
+→ TOOL/MCP HEALTH
+→ GAP ASSESSMENT
+→ HUMAN APPROVAL GATE
+
+Keep discovery inside the authoritative target root unless specific evidence
+requires stepping outside it. Avoid broad workspace-level scans and
+unrelated inaccessible directories by default. Do not use a blanket
+`tmp*` exclusion; bound discovery by the established root and task relevance.
 
 Inspect:
 - repository structure

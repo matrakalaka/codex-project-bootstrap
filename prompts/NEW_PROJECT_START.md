@@ -8,6 +8,27 @@ Inspect the existing project and determine which parts of my standard are alread
 
 Use Codebase Memory first where appropriate.
 
+Before broad discovery, resolve the intended target repository identity and
+authoritative root using bounded evidence: the explicit user target/current
+working directory, current Git root, nested Git boundaries, origin/remotes,
+existing project authority, and workspace layout. Do not automatically
+prefer an outer repository, nested repository, current directory, or first
+Git root found. Surface conflicting evidence or ambiguity and stop/request
+clarification when necessary; do not scan multiple candidate roots broadly.
+
+Use this order:
+
+CANONICAL BOOTSTRAP SOURCE
+→ TARGET REPOSITORY IDENTITY / ROOT
+→ TARGET PROJECT AUTHORITY
+→ BOUNDED PROJECT DISCOVERY
+→ TOOL/MCP HEALTH
+→ GAP ASSESSMENT
+→ HUMAN APPROVAL GATE
+
+Keep discovery inside the authoritative root unless specific evidence
+requires otherwise. Do not use blanket exclusions for names such as `tmp*`.
+
 Return:
 
 PROJECT BOOTSTRAP ASSESSMENT
