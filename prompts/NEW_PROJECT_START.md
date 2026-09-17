@@ -20,6 +20,18 @@ Existing Deployment Model:
 Existing Database Model:
 Existing Known-Good Evidence:
 
+Tool / MCP Health:
+
+Tool:
+Configured:
+Available In Current Session:
+Correctly Scoped To Current Project:
+Operational:
+Required By Existing Project Authority:
+Bootstrap Blocker:
+Observed Gap:
+Recommended Action:
+
 Recommended .md Files:
 Recommended Skills:
 Recommended Testing Stack:

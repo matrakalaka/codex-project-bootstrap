@@ -63,12 +63,55 @@ Use Codebase Memory first where appropriate.
 
 Do not modify files during discovery.
 
+### 3A. PROJECT-SCOPED TOOL / MCP HEALTH
+
+During read-only discovery, inspect only relevant configured tools and MCP
+capabilities: those named or required by existing project authority, needed
+for the assessment, or otherwise directly relevant to the project. For each
+relevant capability, distinguish where reasonably observable:
+
+```text
+Tool:
+Configured: YES / NO / UNKNOWN
+Available In Current Session: YES / NO / UNKNOWN
+Correctly Scoped To Current Project: YES / NO / UNKNOWN
+Operational: YES / NO / UNKNOWN
+Required By Existing Project Authority: YES / NO
+Bootstrap Blocker: YES / NO
+Observed Gap:
+Recommended Action: <minimum necessary action or NONE>
+```
+
+Global registration or installation does not establish session availability,
+project scope, or operational health. Use a safe, read-only capability check
+when one is available, without changing configuration or project state.
+
+An unavailable, stale, incompatible, or incorrectly scoped optional capability
+does not automatically block the assessment. Record the exact gap, use safe
+available fallback discovery mechanisms, and continue when possible. If
+existing project authority explicitly requires the capability and safe
+fallbacks cannot satisfy that requirement, classify the condition as a
+bootstrap blocker rather than bypassing the authority.
+
+Codebase Memory is used first only when it is available, operational, and
+correctly scoped to the current project. Do not assume a globally configured
+Codebase Memory MCP applies to every repository. If it is unavailable or
+unhealthy, do not automatically reinstall it, change `CBM_ALLOWED_ROOT`,
+restart or kill daemons, delete or rebuild indexes, modify global Codex/MCP
+configuration, or repoint another project's qualified configuration. Report
+the condition and continue with safe fallback discovery when permitted.
+
 ## 4. BOOTSTRAP DECISION
 If equivalent governance already exists, integrate with it.
 
 Do not overwrite good project conventions.
 
 If missing, propose the minimum required project-local files.
+
+Every `PROJECT BOOTSTRAP ASSESSMENT` must include a targeted `Tool / MCP
+Health` section using the fields above. Do not report irrelevant capabilities
+merely to fill the section. The assessment remains read-only and stops at the
+human-approval gate before project changes.
 
 ## 4A. DELEGATION DISCOVERY AND ADOPTION
 After discovering project authority, assess delegation read-only. Delegation is
