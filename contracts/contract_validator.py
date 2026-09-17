@@ -137,8 +137,9 @@ def validate(kind: str, value: Any) -> list[str]:
             errors.append("authorized_head must be a full commit SHA")
         if "playbook_binding" in value:
             binding = value["playbook_binding"]
-            if not isinstance(binding, dict) or not _hash(binding.get("fingerprint")) or not _hash(binding.get("parameters_hash")):
-                errors.append("playbook binding requires valid fingerprints")
+            required_binding = ("canonical_playbook_fingerprint", "effective_playbook_fingerprint", "effective_parameters_hash")
+            if not isinstance(binding, dict) or any(not _hash(binding.get(key)) for key in required_binding):
+                errors.append("playbook binding requires valid approval hashes")
     elif kind == "result":
         if value["outcome"] not in OUTCOMES:
             errors.append("outcome is not in the standard vocabulary")
