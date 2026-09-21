@@ -1,5 +1,11 @@
 Start one new scoped engineering task.
 
+Before implementation, read the global `PROJECT_NORTH_STAR.md` resolved by
+the bootstrap and any clearly designated project-specific North Star. State
+the final intended objective, required proof, explicit out-of-scope work, and
+stop/promotion boundary. Keep ordinary engineering obstacles inside this
+task; park non-blocking ideas instead of creating phases for them.
+
 Read in this order:
 
 1. AGENTS.md — full

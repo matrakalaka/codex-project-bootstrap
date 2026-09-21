@@ -20,6 +20,12 @@ because it exists. If a local copy is used, explicitly verify it against the
 canonical repository/revision first. Report any material divergence, and do
 not overwrite or delete the local copy automatically during discovery.
 
+After reading this bootstrap, resolve and read the canonical
+`PROJECT_NORTH_STAR.md` from the same canonical repository/revision. It is a
+global objective-discipline standard, not a project-specific workflow. A local
+copy is only a convenience copy and must be checked for material divergence
+before use.
+
 ## 1. CORE PROJECT FILES
 For substantial projects, normally establish:
 - AGENTS.md
@@ -50,6 +56,12 @@ Unless an existing project defines a stronger order:
 
 Source truth wins when indexed/advisory information is stale.
 
+`PROJECT_NORTH_STAR.md` is global scope/objective discipline. It does not
+override any item above, security/data boundaries, explicit user decisions, or
+stronger project authority. A project-specific North Star is discovered after
+the global North Star and specializes the delivery objective without replacing
+the global contract.
+
 ## 3. FIRST CONTACT WITH A PROJECT
 Start READ-ONLY.
 
@@ -79,6 +91,12 @@ CANONICAL BOOTSTRAP SOURCE
 → TOOL/MCP HEALTH
 → GAP ASSESSMENT
 → HUMAN APPROVAL GATE
+
+During bounded project discovery, look for the canonical global North Star
+reference and an optional project-specific North Star. Prefer the exact root
+`PROJECT_NORTH_STAR.md` for the global contract. Accept a named project
+extension such as `<PROJECT>_NORTH_STAR.md` only when clearly designated by the
+project. Do not scan unrelated projects for North Stars.
 
 Keep discovery inside the authoritative target root unless specific evidence
 requires stepping outside it. Avoid broad workspace-level scans and
@@ -268,6 +286,12 @@ Avoid:
 - architecture rewrites
 - out-of-scope edits
 
+Apply the global North Star anti-drift gate before creating a new phase,
+subproject, subsystem, service, abstraction, harness, tool integration,
+architecture, database model, deployment layer, migration program, refactor,
+or side task. Ordinary engineering obstacles stay inside the approved task;
+non-blocking ideas go to the project's parking lot.
+
 ## 11. VALIDATION
 Use the smallest meaningful evidence set:
 - targeted tests
@@ -368,3 +392,6 @@ Maximum useful progress with:
 - minimum regression risk
 - clear evidence
 - strict project boundaries
+
+The approved objective is the destination. Complete it, prove it, respect its
+stop/promotion boundary, and stop.
