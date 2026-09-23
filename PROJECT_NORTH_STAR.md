@@ -12,6 +12,23 @@ This is a scope and objective-discipline standard. It does not override
 security boundaries, data safety, project architecture, known-good contracts,
 explicit user decisions, or stronger project authority.
 
+## Discovery classification
+
+Classify every discovered requirement or finding using this single vocabulary:
+
+- `REQUIRED_FOR_OBJECTIVE` — the discovered work is necessary to satisfy the
+  currently approved objective.
+- `ALREADY_SATISFIED` — the requirement is already met and does not justify new
+  work.
+- `BLOCKER` — concrete evidence demonstrates that the approved objective
+  cannot safely complete without resolving the condition.
+- `PARKED` — a useful or relevant finding lies outside the approved objective
+  and does not block completion.
+
+Preserve the `PARKED IDEA` mechanism for non-blocking discoveries. Do not
+introduce another discovery classification such as
+`INDEPENDENT_FUTURE_WORK`.
+
 ## North Star contract
 
 For each substantial task, keep these four statements available:
@@ -36,6 +53,37 @@ layer, migration program, refactor, or side task, ask:
 
 If the objective can safely be completed without the additional work, park the
 idea and continue the current objective.
+
+Before a discovered dependency may expand scope, record the dependency proof:
+
+1. What exact part of the approved objective cannot complete without it?
+2. What concrete evidence demonstrates that necessity?
+3. Why is the existing mechanism insufficient?
+4. What is the minimum additional change required?
+5. What happens if it is not addressed now?
+
+Cleaner architecture, future usefulness, personal preference, optional-tool
+availability, unrelated technical debt, convenience, and speculative future
+requirements are not sufficient proof by themselves. A dependency may expand
+scope only when the proof establishes necessity and the smallest safe change.
+
+The minimum necessary delta is the smallest coherent change that safely
+satisfies the approved objective; it is not simply the fewest changed lines.
+Favor existing mechanisms, bounded changes, selective integration,
+compatibility, and preservation of known-good behavior before rewrites,
+migrations, replacement frameworks, services, orchestration, environments,
+harnesses, or phases/subprojects.
+
+Do not introduce another phase, project or subproject, harness, environment,
+framework, migration, service, orchestration layer, infrastructure layer,
+toolchain change, or cleanup initiative unless all of these are proven:
+
+1. It is necessary for the approved objective.
+2. Existing mechanisms are demonstrably insufficient.
+3. The minimum coherent solution still requires it.
+4. Its complexity is proportional to the objective.
+
+Otherwise classify the work as `PARKED`.
 
 ## Ordinary engineering stays in the task
 
@@ -112,8 +160,12 @@ required evidence.
 When the approved objective is implemented, verified, qualified according to
 project authority, and checkpointed where required, stop. Report what changed,
 what was verified, known limitations, parked ideas, and the promotion or next
-step boundary. Do not continue improving adjacent systems merely because more
-work is possible.
+step boundary. Completion must confirm that the original approved objective
+was satisfied, required verification passed, changed paths stayed within
+approval, any scope expansion had verified dependency proof, unrelated
+discoveries were `PARKED`, optional tooling did not silently become scope, and
+the `STOP` boundary was reached. Do not continue improving adjacent systems
+merely because more work is possible.
 
 ## Project-specific extensions
 

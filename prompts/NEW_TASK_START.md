@@ -17,13 +17,28 @@ Read in this order:
 Inspect git status before editing.
 
 TASK:
-<describe exact task>
+<ORIGINAL APPROVED OBJECTIVE: describe the exact task>
 
 TARGET:
-<desired result>
+<INTENDED CHANGE: describe the desired result>
+
+REQUIRED PROOF:
+<evidence that proves the objective works>
+
+EXPECTED CHANGE UNIT:
+<smallest coherent change and expected changed paths>
 
 CONSTRAINTS:
-<files/environments/areas that must remain untouched>
+<OUT OF SCOPE: files/environments/areas that must remain untouched>
+
+NEW DEPENDENCIES REQUIRED: YES / NO / UNKNOWN
+EXACT OBJECTIVE REQUIRING EACH DEPENDENCY:
+<state the exact objective part and dependency proof, or NONE>
+
+OPTIONAL TOOLING REQUIRED: YES / NO
+
+STOP / PROMOTION BOUNDARY:
+<where this task stops and what approval is required next>
 
 Determine the smallest coherent implementation and validation plan.
 
@@ -37,6 +52,13 @@ Return a concise final report:
 - result
 - files changed
 - validation
+- objective satisfied
+- required verification passed
+- changed paths remained approved
+- dependency proof existed for any expansion
+- unrelated findings were PARKED
+- optional tooling did not become scope
+- STOP reached
 - commit/push/deployment state
 - protected areas untouched
 - recommended next task
