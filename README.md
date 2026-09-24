@@ -31,6 +31,27 @@ Recommended short launcher instruction:
 
 > Initialize this project using the canonical bootstrap repository: https://github.com/matrakalaka/codex-project-bootstrap. Read and follow its `GLOBAL_PROJECT_BOOTSTRAP.md` as the canonical entry point. Resolve the target repository/root before broad discovery, start read-only, make no changes, and stop at the human-approval gate with the `PROJECT BOOTSTRAP ASSESSMENT`.
 
+## Read-only authority resolution
+
+The repository-provided resolver at `scripts/bootstrap_authority.py` verifies
+the canonical Git revision and the required bootstrap files before authority
+is used. A local Git copy is accepted only when its `origin` is the canonical
+repository, the required commit object exists, and the committed file hashes
+match the canonical revision. Pass a specific candidate with `--cache`; the
+resolver never scans for or selects arbitrary local copies and never modifies
+the candidate or target project.
+
+Examples:
+
+```sh
+python3 scripts/bootstrap_authority.py --cache /path/to/explicit/bootstrap-cache
+py -3 scripts/bootstrap_authority.py --cache C:\\path\\to\\explicit\\bootstrap-cache
+```
+
+Exit code `0` reports verified authority. Exit code `2` reports
+`BLOCKED_PRECONDITION` and `stop: true` when canonical authority cannot be
+established safely.
+
 ## Core project-local files
 Usually:
 - AGENTS.md
