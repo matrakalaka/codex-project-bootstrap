@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import os
 import shutil
 import stat
@@ -22,8 +21,8 @@ CANONICAL_GIT_URLS = {
     "git@github.com:matrakalaka/codex-project-bootstrap.git",
     "ssh://git@github.com/matrakalaka/codex-project-bootstrap.git",
 }
-EXPECTED_REVISION = "fb39ddbd5dbc4542b48c91df924c8a436cb7faa0"
-EXPECTED_RESOLVER_SHA256 = "b2a307b5d8c29604e652941e63df0bda77ae16e17cc6d5332e7ea03f7cd4ad84"
+CANONICAL_REF = "main"
+VERIFIED_FALLBACK_RESOLVER_SHA256 = "b2a307b5d8c29604e652941e63df0bda77ae16e17cc6d5332e7ea03f7cd4ad84"
 
 
 EXPECTED_LAUNCHER = b'''codex-bootstrap() {
@@ -37,12 +36,13 @@ Read GLOBAL_PROJECT_BOOTSTRAP.md first. Perform READ-ONLY discovery only, respec
 
 
 INSTALLED_LAUNCHER = b'''codex-bootstrap() {
-  local canonical_revision="fb39ddbd5dbc4542b48c91df924c8a436cb7faa0"
-  local resolver_sha256="b2a307b5d8c29604e652941e63df0bda77ae16e17cc6d5332e7ea03f7cd4ad84"
-  local canonical_resolver_url="https://raw.githubusercontent.com/matrakalaka/codex-project-bootstrap/${canonical_revision}/scripts/bootstrap_authority.py"
+  local canonical_repository="https://github.com/matrakalaka/codex-project-bootstrap.git"
+  local canonical_ref="main"
+  local fallback_resolver_sha256="b2a307b5d8c29604e652941e63df0bda77ae16e17cc6d5332e7ea03f7cd4ad84"
   local cache="${CODEX_BOOTSTRAP_CACHE:-}"
   local resolver="${CODEX_BOOTSTRAP_RESOLVER:-}"
   local staging=""
+  local canonical_checkout=""
   local authority_dir=""
   local authority_json=""
   local resolver_status=0
@@ -52,34 +52,21 @@ INSTALLED_LAUNCHER = b'''codex-bootstrap() {
     return 2
   }
 
-  resolver="$staging/bootstrap_authority.py"
-  if ! python3 - "$canonical_resolver_url" "$resolver" "$resolver_sha256" <<'PY'
-import hashlib
-import sys
-from pathlib import Path
-from urllib.request import Request, urlopen
-
-url, destination, expected = sys.argv[1:]
-request = Request(url, headers={"User-Agent": "codex-bootstrap-launcher"})
-with urlopen(request, timeout=10) as response:
-    content = response.read()
-if hashlib.sha256(content).hexdigest() != expected:
-    raise SystemExit("canonical resolver content diverged")
-Path(destination).write_bytes(content)
-PY
-  then
-    if [ -n "${CODEX_BOOTSTRAP_RESOLVER:-}" ] && [ -f "$CODEX_BOOTSTRAP_RESOLVER" ]; then
-      resolver="$CODEX_BOOTSTRAP_RESOLVER"
-    elif [ -n "$cache" ] && [ -f "$cache/scripts/bootstrap_authority.py" ]; then
-      resolver="$cache/scripts/bootstrap_authority.py"
-    else
-      printf '%s\n' "BLOCKED_PRECONDITION: canonical resolver unavailable or divergent; STOP." >&2
-      rm -R "$staging"
-      return 2
-    fi
+  canonical_checkout="$staging/canonical"
+  if git clone --depth 1 --no-tags --branch "$canonical_ref" "$canonical_repository" "$canonical_checkout" >/dev/null 2>&1 \
+    && [ -f "$canonical_checkout/scripts/bootstrap_authority.py" ]; then
+    resolver="$canonical_checkout/scripts/bootstrap_authority.py"
+  elif [ -n "${CODEX_BOOTSTRAP_RESOLVER:-}" ] && [ -f "$CODEX_BOOTSTRAP_RESOLVER" ]; then
+    resolver="$CODEX_BOOTSTRAP_RESOLVER"
+  elif [ -n "$cache" ] && [ -f "$cache/scripts/bootstrap_authority.py" ]; then
+    resolver="$cache/scripts/bootstrap_authority.py"
+  else
+    printf '%s\n' "BLOCKED_PRECONDITION: canonical resolver unavailable or divergent; STOP."
+    rm -R "$staging"
+    return 2
   fi
 
-  if ! python3 - "$resolver" "$resolver_sha256" <<'PY'
+  if [ "$resolver" != "$canonical_checkout/scripts/bootstrap_authority.py" ] && ! python3 - "$resolver" "$fallback_resolver_sha256" <<'PY'
 import hashlib
 import sys
 from pathlib import Path
@@ -89,14 +76,16 @@ if hashlib.sha256(Path(path).read_bytes()).hexdigest() != expected:
     raise SystemExit("resolver hash mismatch")
 PY
   then
-    printf '%s\n' "BLOCKED_PRECONDITION: resolver is not the qualified canonical revision; STOP." >&2
+    printf '%s\n' "BLOCKED_PRECONDITION: resolver is not a verified historical fallback; STOP." >&2
     rm -R "$staging"
     return 2
   fi
 
   authority_dir="$staging/authority"
 
-  if [ -n "$cache" ]; then
+  if [ "$resolver" = "$canonical_checkout/scripts/bootstrap_authority.py" ]; then
+    authority_json="$(python3 "$resolver" --source-dir "$canonical_checkout" --output-dir "$authority_dir")"
+  elif [ -n "$cache" ]; then
     authority_json="$(python3 "$resolver" --cache "$cache" --output-dir "$authority_dir")"
   else
     authority_json="$(python3 "$resolver" --output-dir "$authority_dir")"
@@ -155,14 +144,15 @@ def verify_repository(root: Path) -> Path:
         raise InstallerBlocked(f"repository verification failed: {error}") from error
     if not _canonical_remote(origin):
         raise InstallerBlocked(f"repository origin is not canonical: {origin}")
-    if head != EXPECTED_REVISION:
-        raise InstallerBlocked(f"repository HEAD is not the expected revision: {head}")
+    if len(head) != 40 or any(character not in "0123456789abcdef" for character in head):
+        raise InstallerBlocked(f"repository HEAD is not an immutable commit: {head}")
     resolver = root / "scripts" / "bootstrap_authority.py"
     if not resolver.is_file():
         raise InstallerBlocked(f"qualified resolver is missing: {resolver}")
-    actual = hashlib.sha256(resolver.read_bytes()).hexdigest()
-    if actual != EXPECTED_RESOLVER_SHA256:
-        raise InstallerBlocked("qualified resolver hash mismatch")
+    try:
+        _run_git(root, "cat-file", "-e", f"{head}:scripts/bootstrap_authority.py")
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise InstallerBlocked("qualified resolver is absent from repository HEAD") from error
     return resolver
 
 

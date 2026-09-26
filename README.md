@@ -33,13 +33,13 @@ Recommended short launcher instruction:
 
 ## Read-only authority resolution
 
-The repository-provided resolver at `scripts/bootstrap_authority.py` verifies
-the canonical Git revision and the required bootstrap files before authority
-is used. A local Git copy is accepted only when its `origin` is the canonical
-repository, the required commit object exists, and the committed file hashes
-match the canonical revision. Pass a specific candidate with `--cache`; the
-resolver never scans for or selects arbitrary local copies and never modifies
-the candidate or target project.
+The repository-provided resolver at `scripts/bootstrap_authority.py` obtains a
+shallow snapshot of the canonical `main` ref, verifies the canonical origin,
+derives the immutable `HEAD` commit, and reads the required bootstrap files
+from that same commit. A local fallback is accepted only when it matches the
+historical verified revision and committed file hashes. Pass a specific
+candidate with `--cache`; the resolver never scans for or selects arbitrary
+local copies and never modifies the candidate or target project.
 
 Examples:
 
