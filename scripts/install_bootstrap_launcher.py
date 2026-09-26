@@ -35,6 +35,99 @@ Read GLOBAL_PROJECT_BOOTSTRAP.md first. Perform READ-ONLY discovery only, respec
 '''
 
 
+HISTORICAL_INSTALLED_LAUNCHER = b'''codex-bootstrap() {
+  local canonical_revision="fb39ddbd5dbc4542b48c91df924c8a436cb7faa0"
+  local resolver_sha256="b2a307b5d8c29604e652941e63df0bda77ae16e17cc6d5332e7ea03f7cd4ad84"
+  local canonical_resolver_url="https://raw.githubusercontent.com/matrakalaka/codex-project-bootstrap/${canonical_revision}/scripts/bootstrap_authority.py"
+  local cache="${CODEX_BOOTSTRAP_CACHE:-}"
+  local resolver="${CODEX_BOOTSTRAP_RESOLVER:-}"
+  local staging=""
+  local authority_dir=""
+  local authority_json=""
+  local resolver_status=0
+
+  staging="$(mktemp -d "${TMPDIR:-/tmp}/codex-bootstrap.XXXXXX")" || {
+    printf '%s\n' "BLOCKED_PRECONDITION: could not create temporary authority workspace; STOP." >&2
+    return 2
+  }
+
+  resolver="$staging/bootstrap_authority.py"
+  if ! python3 - "$canonical_resolver_url" "$resolver" "$resolver_sha256" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+url, destination, expected = sys.argv[1:]
+request = Request(url, headers={"User-Agent": "codex-bootstrap-launcher"})
+with urlopen(request, timeout=10) as response:
+    content = response.read()
+if hashlib.sha256(content).hexdigest() != expected:
+    raise SystemExit("canonical resolver content diverged")
+Path(destination).write_bytes(content)
+PY
+  then
+    if [ -n "${CODEX_BOOTSTRAP_RESOLVER:-}" ] && [ -f "$CODEX_BOOTSTRAP_RESOLVER" ]; then
+      resolver="$CODEX_BOOTSTRAP_RESOLVER"
+    elif [ -n "$cache" ] && [ -f "$cache/scripts/bootstrap_authority.py" ]; then
+      resolver="$cache/scripts/bootstrap_authority.py"
+    else
+      printf '%s\n' "BLOCKED_PRECONDITION: canonical resolver unavailable or divergent; STOP." >&2
+      rm -R "$staging"
+      return 2
+    fi
+  fi
+
+  if ! python3 - "$resolver" "$resolver_sha256" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+path, expected = sys.argv[1:]
+if hashlib.sha256(Path(path).read_bytes()).hexdigest() != expected:
+    raise SystemExit("resolver hash mismatch")
+PY
+  then
+    printf '%s\n' "BLOCKED_PRECONDITION: resolver is not the qualified canonical revision; STOP." >&2
+    rm -R "$staging"
+    return 2
+  fi
+
+  authority_dir="$staging/authority"
+
+  if [ -n "$cache" ]; then
+    authority_json="$(python3 "$resolver" --cache "$cache" --output-dir "$authority_dir")"
+  else
+    authority_json="$(python3 "$resolver" --output-dir "$authority_dir")"
+  fi
+  resolver_status=$?
+
+  if [ "$resolver_status" -ne 0 ]; then
+    printf '%s\n' "$authority_json" >&2
+    printf '%s\n' "BLOCKED_PRECONDITION: bootstrap authority unresolved; STOP." >&2
+    rm -R "$staging"
+    return "$resolver_status"
+  fi
+
+  codex --sandbox read-only "Initialize this target project using the canonical bootstrap repository:
+
+https://github.com/matrakalaka/codex-project-bootstrap
+
+Authority was resolved and verified before launch:
+$authority_json
+
+Read the verified GLOBAL_PROJECT_BOOTSTRAP.md and PROJECT_NORTH_STAR.md from:
+$authority_dir
+
+Perform READ-ONLY discovery only, preserve existing project authority, return the PROJECT BOOTSTRAP ASSESSMENT, and stop at the human-approval gate. Do not modify the target project before approval."
+
+  local codex_status=$?
+  rm -R "$staging"
+  return "$codex_status"
+}
+'''
+
+
 INSTALLED_LAUNCHER = b'''codex-bootstrap() {
   local canonical_repository="https://github.com/matrakalaka/codex-project-bootstrap.git"
   local canonical_ref="main"
@@ -122,6 +215,13 @@ class InstallerBlocked(RuntimeError):
     pass
 
 
+RECOGNIZED_LAUNCHERS = (
+    EXPECTED_LAUNCHER,
+    HISTORICAL_INSTALLED_LAUNCHER,
+    INSTALLED_LAUNCHER,
+)
+
+
 def _run_git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args],
@@ -156,13 +256,22 @@ def verify_repository(root: Path) -> Path:
     return resolver
 
 
-def install(zshrc: Path, repo_root: Path) -> Path:
+def _recognized_launcher(data: bytes) -> bytes | None:
+    function_count = data.count(b"codex-bootstrap() {")
+    matches = [launcher for launcher in RECOGNIZED_LAUNCHERS if data.count(launcher) == 1]
+    if function_count != 1 or len(matches) != 1:
+        raise InstallerBlocked("expected exactly one recognized codex-bootstrap launcher function")
+    return matches[0]
+
+
+def install(zshrc: Path, repo_root: Path) -> Path | None:
     verify_repository(repo_root)
     if not zshrc.is_file():
         raise InstallerBlocked(f"launcher profile is missing: {zshrc}")
     data = zshrc.read_bytes()
-    if data.count(EXPECTED_LAUNCHER) != 1:
-        raise InstallerBlocked("expected codex-bootstrap function was not found exactly once")
+    predecessor = _recognized_launcher(data)
+    if predecessor == INSTALLED_LAUNCHER:
+        return None
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     backup = zshrc.parent / f".zshrc.codex-bootstrap.backup.{timestamp}.{os.getpid()}"
@@ -170,7 +279,11 @@ def install(zshrc: Path, repo_root: Path) -> Path:
         raise InstallerBlocked(f"backup path already exists: {backup}")
     shutil.copy2(zshrc, backup)
 
-    replacement = data.replace(EXPECTED_LAUNCHER, INSTALLED_LAUNCHER)
+    replacement = data.replace(predecessor, INSTALLED_LAUNCHER)
+    if replacement.count(INSTALLED_LAUNCHER) != 1 or replacement.count(b"codex-bootstrap() {") != 1:
+        raise InstallerBlocked("launcher replacement postcheck failed")
+    if predecessor in replacement:
+        raise InstallerBlocked("historical launcher remained after replacement")
     mode = stat.S_IMODE(zshrc.stat().st_mode)
     fd, temporary = tempfile.mkstemp(prefix=".zshrc.codex-bootstrap.", dir=zshrc.parent)
     try:
@@ -200,8 +313,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"BLOCKED_PRECONDITION: {error}", file=sys.stderr)
         return 2
     print("HOST_CHECKPOINT_OK")
-    print(f"HOST_BACKUP_CREATED: {backup}")
-    print("HOST_LAUNCHER_PATCH_APPLIED")
+    if backup is None:
+        print("HOST_LAUNCHER_ALREADY_CURRENT")
+    else:
+        print(f"HOST_BACKUP_CREATED: {backup}")
+        print("HOST_LAUNCHER_PATCH_APPLIED")
     print("HOST_POSTCHECK_OK")
     return 0
 

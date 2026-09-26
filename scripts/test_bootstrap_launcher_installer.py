@@ -9,6 +9,7 @@ from unittest.mock import patch
 from install_bootstrap_launcher import (
     CANONICAL_REPOSITORY,
     EXPECTED_LAUNCHER,
+    HISTORICAL_INSTALLED_LAUNCHER,
     INSTALLED_LAUNCHER,
     InstallerBlocked,
     VERIFIED_FALLBACK_RESOLVER_SHA256,
@@ -48,6 +49,60 @@ class BootstrapLauncherInstallerTests(unittest.TestCase):
             with self.assertRaises(InstallerBlocked):
                 install(zshrc, ROOT)
             self.assertEqual(list(Path(directory).iterdir()), [zshrc])
+
+    def test_replaces_exact_historical_launcher_and_preserves_surrounding_bytes(self):
+        self.assertEqual(
+            hashlib.sha256(HISTORICAL_INSTALLED_LAUNCHER).hexdigest(),
+            "68be635739e5b32d8c1e5412ccf0a2cad17b24cafcca586af141c6de07b65066",
+        )
+        prefix = b"export KEEP_BEFORE=1\n"
+        suffix = b"export KEEP_AFTER=2\n"
+        with tempfile.TemporaryDirectory() as directory:
+            zshrc = Path(directory) / ".zshrc"
+            zshrc.write_bytes(prefix + HISTORICAL_INSTALLED_LAUNCHER + suffix)
+            original = zshrc.read_bytes()
+
+            backup = install(zshrc, ROOT)
+
+            self.assertIsNotNone(backup)
+            self.assertEqual(backup.read_bytes(), original)
+            result = zshrc.read_bytes()
+            self.assertEqual(result, prefix + INSTALLED_LAUNCHER + suffix)
+            self.assertEqual(result.count(INSTALLED_LAUNCHER), 1)
+            self.assertEqual(result.count(HISTORICAL_INSTALLED_LAUNCHER), 0)
+
+    def test_current_launcher_is_idempotent_without_rewrite_or_backup(self):
+        prefix = b"export KEEP_BEFORE=1\n"
+        suffix = b"export KEEP_AFTER=2\n"
+        with tempfile.TemporaryDirectory() as directory:
+            zshrc = Path(directory) / ".zshrc"
+            original = prefix + INSTALLED_LAUNCHER + suffix
+            zshrc.write_bytes(original)
+
+            self.assertIsNone(install(zshrc, ROOT))
+            self.assertEqual(zshrc.read_bytes(), original)
+            self.assertEqual(list(Path(directory).iterdir()), [zshrc])
+
+    def test_unknown_modified_launcher_is_blocked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            zshrc = Path(directory) / ".zshrc"
+            zshrc.write_bytes(HISTORICAL_INSTALLED_LAUNCHER.replace(b"local cache", b"local altered"))
+            with self.assertRaises(InstallerBlocked):
+                install(zshrc, ROOT)
+            self.assertEqual(list(Path(directory).iterdir()), [zshrc])
+
+    def test_duplicate_historical_and_current_launchers_are_blocked(self):
+        cases = (
+            HISTORICAL_INSTALLED_LAUNCHER + HISTORICAL_INSTALLED_LAUNCHER,
+            HISTORICAL_INSTALLED_LAUNCHER + INSTALLED_LAUNCHER,
+        )
+        for content in cases:
+            with self.subTest(length=len(content)), tempfile.TemporaryDirectory() as directory:
+                zshrc = Path(directory) / ".zshrc"
+                zshrc.write_bytes(content)
+                with self.assertRaises(InstallerBlocked):
+                    install(zshrc, ROOT)
+                self.assertEqual(list(Path(directory).iterdir()), [zshrc])
 
     def test_generated_launcher_uses_git_ref_and_observes_source_snapshot(self):
         text = INSTALLED_LAUNCHER.decode()
