@@ -52,6 +52,25 @@ Exit code `0` reports verified authority. Exit code `2` reports
 `BLOCKED_PRECONDITION` and `stop: true` when canonical authority cannot be
 established safely.
 
+### Windows PowerShell launcher
+
+Windows hosts use the platform-specific installer with an explicit profile
+path from a clean checkout of this canonical repository:
+
+```powershell
+py -3 scripts/install_bootstrap_launcher_windows.py `
+  --profile $PROFILE `
+  --repo-root (Get-Location)
+```
+
+The installer verifies the canonical repository, recognizes only the approved
+historical or current `codex-bootstrap` function, preserves unrelated profile
+bytes, creates an exact same-directory backup, and fails closed on unknown or
+duplicate definitions. The installed function resolves canonical Git
+authority in temporary storage and launches Codex read-only without changing
+the target project's current directory. Do not install from an arbitrary
+project-local copy or modify the real profile without explicit host approval.
+
 ## Core project-local files
 Usually:
 - AGENTS.md
