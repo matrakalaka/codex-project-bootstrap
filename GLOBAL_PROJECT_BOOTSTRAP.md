@@ -121,6 +121,40 @@ Use Codebase Memory first where appropriate.
 
 Do not modify files during discovery.
 
+### 3B. CONSOLIDATED HUMAN COMMAND RULE
+
+When multiple commands must be executed manually by the human, provide them
+as one copy/paste command or one bounded shell/PowerShell block when all of
+the following are true:
+
+- the commands are already known;
+- they are independent or can safely run sequentially;
+- no later command requires evaluating earlier output for safety; and
+- combining them does not weaken a STOP boundary, approval gate, fail-closed
+  behavior, or evidence quality.
+
+Prefer one human action producing complete bounded evidence over unnecessary
+command/output/command round trips. For read-only host discovery, batch known
+safe observations whenever practical, including executable discovery, tool
+versions, environment and Git checkpoint information, launcher definitions,
+profile paths, file existence, directory discovery, configuration inspection,
+and status or diagnostic checks.
+
+Use clear section labels, tolerate expected missing optional tools or paths
+where appropriate, keep the block read-only, and make its output suitable for
+one copy/paste back into Codex or ChatGPT. Do not dump secrets or unrelated
+sensitive configuration.
+
+Split commands into separate rounds only for a concrete dependency: earlier
+output determines whether a later command is safe; an approval gate exists;
+the later command mutates state and requires review; credentials or
+authorization are required; an earlier failure must stop execution; or
+combining the commands would obscure evidence or make recovery less safe.
+Do not split merely because commands inspect different facts. Apply this rule
+using platform-native syntax in PowerShell/Windows, zsh/bash/macOS, and Linux
+shells. It must not be used to bypass mutation approval, STOP behavior, or
+other stronger project authority.
+
 ### 3A. PROJECT-SCOPED TOOL / MCP HEALTH
 
 During read-only discovery, inspect only relevant configured tools and MCP
