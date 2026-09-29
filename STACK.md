@@ -25,6 +25,33 @@ superior.
 - unlazy — `OPTIONAL_COMPLETION_AND_ACCEPTANCE_GATE_TOOLING`; substantial tasks only; derive gates from existing project authority; cannot grant RepoGuard admission, mutation authorization, verification authority, receipts, or completion status; no hooks or project activation by default.
 - Oxc — `OPTIONAL_JS_TS_TOOLCHAIN_ACCELERATOR`; project-evaluation option only; complement existing JS/TS tools first and migrate only with evidence; no global package or project dependency installation by default.
 
+### Evaluated and parked toolbox entries
+
+- OpenViking — `OPENVIKING_NORTH_STAR_PARKED`; evaluated at the immutable pin
+  `1f4f7039fc394c5d04637828166f4e4e74e249e0` from
+  `https://github.com/volcengine/OpenViking`. The objective was an optional,
+  advisory, non-semantic, read-only Codex context capability. The official
+  `openviking-sdk` is an HTTP client for a running OpenViking server, and the
+  pinned Agent Plugins MCP proxy forwards to that server's `/mcp` endpoint.
+  Runtime qualification showed that fresh server bootstrap creates internal
+  metadata and 14 queue messages, then enters embedding processing. No model
+  successfully executed, but the supported server path did not satisfy the
+  approved no-model boundary. Lower-level RAGFS capabilities were not adopted
+  as a private or unsupported Codex integration. Outcome:
+  `BLOCKED_PRECONDITION`.
+
+  Parked with OpenViking: local embedding, GGUF, `llama-cpp-python`, Ollama,
+  CUDA/GPU, remote embedding, remote VLM, semantic search, memory writes,
+  lifecycle hooks, automatic recall/capture, source patching, server
+  workarounds, and private/internal RAGFS integration. These are not
+  prerequisites and do not create scope.
+
+  Reconsider OpenViking only if the human explicitly changes the objective or
+  boundaries, or a future release provides a documented supported serverless,
+  model-free, read-only integration surface that materially changes this
+  architectural finding. A new release by itself is insufficient; do not poll
+  for updates.
+
 ## Default engineering skills
 Project-local where applicable:
 - diagnosing-bugs
