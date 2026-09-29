@@ -1,5 +1,6 @@
 import hashlib
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -116,6 +117,7 @@ class BootstrapLauncherInstallerTests(unittest.TestCase):
     def test_historical_fallback_hash_is_verified(self):
         self.assertEqual(VERIFIED_FALLBACK_RESOLVER_SHA256, PUBLISHED_RESOLVER_SHA256)
 
+    @unittest.skipUnless(shutil.which("zsh"), "requires zsh for the Unix launcher integration test")
     def test_git_clone_failure_stops_without_arbitrary_local_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -133,6 +135,7 @@ class BootstrapLauncherInstallerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("canonical resolver unavailable or divergent", result.stdout + result.stderr)
 
+    @unittest.skipUnless(shutil.which("zsh"), "requires zsh for the Unix launcher integration test")
     def test_successful_launcher_preserves_target_cwd_and_dirty_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

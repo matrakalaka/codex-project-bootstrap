@@ -23,6 +23,15 @@ CURRENT_REVISION = "a" * 40
 class BootstrapAuthorityTests(unittest.TestCase):
     def setUp(self):
         self.files = {name: (ROOT / name).read_bytes() for name in REQUIRED_FILES}
+        self.fallback_files = {
+            name: subprocess.run(
+                ["git", "show", f"{VERIFIED_FALLBACK_REVISION}:{name}"],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+            ).stdout
+            for name in REQUIRED_FILES
+        }
 
     def checkout_git(self, args, cwd=None):
         if args[:2] == ["remote", "get-url"]:
@@ -90,7 +99,7 @@ class BootstrapAuthorityTests(unittest.TestCase):
                 return VERIFIED_FALLBACK_REVISION
             raise AssertionError(args)
 
-        show = Mock(side_effect=lambda revision, name, cwd: self.files[name])
+        show = Mock(side_effect=lambda revision, name, cwd: self.fallback_files[name])
         authority = resolve(Path("/verified/cache"), clone=Mock(side_effect=OSError("offline")), git=git, show=show)
         self.assertEqual(authority.source, "verified_cache")
         self.assertEqual(authority.files, VERIFIED_FALLBACK_FILES)
