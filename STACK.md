@@ -24,6 +24,7 @@ superior.
 - SkillCorpus — `OPTIONAL_EXTERNAL_SKILL_RETRIEVAL`; on-demand retrieval only; installation none.
 - unlazy — `OPTIONAL_COMPLETION_AND_ACCEPTANCE_GATE_TOOLING`; substantial tasks only; derive gates from existing project authority; cannot grant RepoGuard admission, mutation authorization, verification authority, receipts, or completion status; no hooks or project activation by default.
 - Oxc — `OPTIONAL_JS_TS_TOOLCHAIN_ACCELERATOR`; project-evaluation option only; complement existing JS/TS tools first and migrate only with evidence; no global package or project dependency installation by default.
+- Replica Skill — `PARKED`; category `OPTIONAL_REPLICA_ANALYSIS_AND_UI_PARITY_TOOLBOX`; source: https://github.com/Jakeschincariol/replica-skill. Optional clean-room application analysis, design guidance, flow testing, feature parity, visual comparison, and rebranding checks. Prefer `replica-recon`, `replica-design`, `replica-test`, `replica-diff`, and `replica-brand`. Project-local and individually selected only; require a pinned, reviewed upstream revision before use. Advisory and never authoritative; Bootstrap, Loop, RepoGuard, and project authority remain superior. No global installation, automatic registration, automatic upstream instruction execution, mutation outside an approved task, proprietary source/assets/data copying, unauthorized external-service access, automatic deployment, or new mandatory dependency. Claude-specific instructions require Codex adaptation.
 
 ### Evaluated and parked toolbox entries
 
