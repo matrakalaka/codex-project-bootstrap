@@ -48,6 +48,11 @@ Stop only for the explicit stop conditions in AGENTS.md.
 
 Do not begin another task after this one.
 
+Before closeout, make these three engineering checks:
+- CORRECTNESS — direct evidence proves the approved behavior works.
+- SCOPE AND BLAST RADIUS — changes match the approved objective, with affected behaviors, interfaces, data, and workflows considered.
+- SIMPLICITY — the implementation is the smallest coherent safe change, without unnecessary code, abstractions, dependencies, configuration, or documentation.
+
 Return a concise final report:
 - result
 - files changed
