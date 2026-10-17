@@ -9,30 +9,31 @@ packet, or conversation transcript.
 
 # LATEST CHECKPOINT
 
-**Checkpoint ID:** bootstrap-memory-phase-2e-closeout
-**Date:** 2026-10-17
-**Timestamp:** 2026-10-17T00:29:20Z
-**Task:** Memory milestone closeout and publication readiness
+**Checkpoint ID:** bootstrap-memory-integration-qualification
+**Date:** 2026-10-16
+**Timestamp:** 2026-10-17T00:52:31Z
+**Task:** Integration qualification and closeout
 **Original Objective:** Improve Bootstrap memory reliability so Codex can
 preserve and recover project objectives, binding decisions, completed work,
 failed approaches, protected scope, and the next approved action across
 sessions. Prevent redundant investigations and unnecessary scope expansion.
 **Objective Source:** Explicit Phase 2A task authorization and
 `GLOBAL_PROJECT_BOOTSTRAP.md` continuity contract.
-**Repository Identity:** `/Users/admin/codex-project-bootstrap`
+**Repository Identity:** `/Users/admin/codex-project-bootstrap-memory-integration`
 (`https://github.com/matrakalaka/codex-project-bootstrap`)
 **Repository Remote:** `https://github.com/matrakalaka/codex-project-bootstrap.git`
-**HEAD (Validated Source Revision):** `e4cbc5002aa9b649a1835cb1aa7f43137fd98e93`
-**Checkpoint Revision:** `UNCOMMITTED:bootstrap-memory-phase-2e-closeout`
-**Current Observed HEAD:** `e4cbc5002aa9b649a1835cb1aa7f43137fd98e93`
-**Branch:** `main`
-**Worktree State:** DIRTY — protected modified Bootstrap/template files and
-untracked `CONTINUE_TOMORROW.md` and `tests/`; intended milestone changes are
-pending the authorized local commit and README.md remains preserved.
-**Material Source Changes Since Validation:** Intended milestone changes are
-listed in the approved scope and are pending the authorized local commit.
-**Dirty-Worktree Evidence:** `git status --short --branch` and reviewed diffs;
-README.md is preserved and excluded from the milestone commit.
+**HEAD (Validated Source Revision):** `35d6b969871468c3d10269a06018b8c171850be7`
+**Checkpoint Revision:** `UNCOMMITTED:bootstrap-memory-integration-qualification`
+**Current Observed HEAD:** `35d6b969871468c3d10269a06018b8c171850be7`
+**Branch:** `integration/bootstrap-memory-20261017`
+**Worktree State:** DIRTY — only this uncommitted checkpoint correction is
+present; the original `main` worktree and its dirty README.md were not
+modified.
+**Material Source Changes Since Validation:** NONE to governed source — the
+only change after validation is this checkpoint projection correction.
+**Dirty-Worktree Evidence:** `git status --short --branch` reported a clean
+integration worktree before this uncommitted checkpoint correction; the
+checkpoint edit itself is the only current working-tree change.
 **Environment:** local working tree
 **Status:** PARTIAL
 
@@ -51,19 +52,19 @@ README.md is preserved and excluded from the milestone commit.
 
 ## Binding Decisions
 
-- Maintain one canonical checkpoint: `GLOBAL_PROJECT_BOOTSTRAP.md:178-198`.
+- Maintain one canonical checkpoint: `GLOBAL_PROJECT_BOOTSTRAP.md:270-290`.
 - Do not create a separate memory database, service, or duplicate authority:
-  `GLOBAL_PROJECT_BOOTSTRAP.md:180-182,196-198`.
+  `GLOBAL_PROJECT_BOOTSTRAP.md:286-290`.
 - Do not introduce an autonomous Continuity Agent at this stage: bounded Phase
   1 architecture and explicit Phase 2A authorization limit this task to the
   existing checkpoint architecture.
 - Existing project authority, source, tests, approvals, RepoGuard, and Loop
-  remain authoritative: `GLOBAL_PROJECT_BOOTSTRAP.md:353-355` and
-  `GLOBAL_ENGINEERING_STANDARD.md:92-99`.
+  remain authoritative: `GLOBAL_PROJECT_BOOTSTRAP.md:480-482` and
+  `GLOBAL_ENGINEERING_STANDARD.md:24-27`.
 - Codebase Memory is advisory, must be correctly scoped and operational before
-  use, and may be unavailable: `GLOBAL_PROJECT_BOOTSTRAP.md:108-117`.
+  use, and may be unavailable: `GLOBAL_PROJECT_BOOTSTRAP.md:200-209`.
 - Missing history must not be silently reconstructed from chat memory:
-  `prompts/NEW_TASK_START.md:20-25`.
+  `prompts/NEW_TASK_START.md:31-40`.
 
 ## Verified Completed Work
 
@@ -115,6 +116,10 @@ README.md is preserved and excluded from the milestone commit.
   PASS; sixteen continuity tests PASS; `git diff --check` PASS; Python syntax
   validation PASS. Closeout versioning additions bring the local suite to
   18/18 PASS. No repeated acceptance session is required.
+- Integration qualification evidence: continuity 18/18 PASS; contracts and
+  North Star 13/13 PASS; playbooks 9/9 PASS; launcher and authority tests
+  37/37 PASS; Python compilation and `git diff --check` PASS. The integrated
+  branch is two commits ahead of `origin/main` at the validated revision.
 - Historical Phase 2A approval provenance remains INCOMPLETE; fully governed
   workflow acceptance remains UNVERIFIED.
 
@@ -155,6 +160,7 @@ README.md is preserved and excluded from the milestone commit.
 - Repeated acceptance test: NOT REQUIRED.
 - Local staging admission: BLOCKED — the environment denied creation of
   `.git/index.lock` (`Operation not permitted`); no files were staged.
+- Current integration worktree: CLEAN before this checkpoint correction.
 
 ## Commit / Deployment
 
@@ -177,15 +183,16 @@ README.md is preserved and excluded from the milestone commit.
 
 ## Contradictions and Staleness
 
-- **State:** NONE
-- **Details:** Timestamp is UTC and reconciles to the local EDT boundary. The
-  versioning convention distinguishes validated source revision, checkpoint
-  revision, current observed HEAD, material source changes, and dirty evidence.
-  The checkpoint may be updated after a source commit; a HEAD mismatch is
-  resolved by freshness evidence, not by SHA equality alone.
-- **Required resolution:** Update the observed HEAD after the authorized local
-  commit and preserve the checkpoint convention; no historical approval
-  reconstruction is required.
+- **State:** HISTORICAL APPROVAL INCOMPLETE; CURRENT FRESHNESS CORRECTED
+- **Details:** The prior checkpoint projected the pre-integration repository,
+  branch, HEAD, dirty state, and milestone task. Those current-state fields
+  are corrected above. Historical Phase 2A approval provenance remains absent
+  and is not reconstructed. The checkpoint versioning convention continues to
+  distinguish validated source revision, checkpoint revision, current observed
+  HEAD, material source changes, and dirty evidence.
+- **Required resolution:** Human publication review must decide whether the
+  missing independent Phase 2A approval packet permits publication; no push,
+  merge, commit, or approval reconstruction is authorized here.
 
 ## Codebase Memory Fallback
 
@@ -211,26 +218,28 @@ README.md is preserved and excluded from the milestone commit.
 
 ## Next Approved Action
 
-Retry the authorized local milestone commit in an environment with writable
-Git metadata; do not start the real-project pilot until that commit succeeds.
+Human publication review of this qualified integration branch, including the
+historical Phase 2A approval gap; do not push, merge, or publish from this task.
 
 ## ChatGPT / Codex Handoff Projection
 
-Repository: `/Users/admin/codex-project-bootstrap` (`main`, validated source
-revision and current observed HEAD `e4cbc5002aa9b649a1835cb1aa7f43137fd98e93`).
+Repository: `/Users/admin/codex-project-bootstrap-memory-integration`
+(`integration/bootstrap-memory-20261017`, validated source revision and
+current observed HEAD `35d6b969871468c3d10269a06018b8c171850be7`).
 Objective: make project-owned continuity memory reliable across sessions.
-Status: PARTIAL. Phase 1 implementation and sixteen continuity tests are
-complete in the working tree; fresh-session recovery and project isolation are
-verified. Binding decisions are
+Status: PARTIAL. Integration qualification is PASS for the available
+platform-independent evidence; Phase 1 implementation and eighteen
+continuity tests are complete, and fresh-session recovery and project
+isolation are verified. Binding decisions are
 one repository-owned checkpoint, no cross-project memory fallback, no second
 memory store, scoped Codebase Memory only, and preserved RepoGuard/Loop/human
 approval boundaries. Historical Phase 2A approval provenance remains absent
-and incomplete; it will not be reconstructed. Protected scope includes
+and INCOMPLETE; it will not be reconstructed. Protected scope includes
 README.md, other repositories, production, main, and memory-daemon
-configuration. Next action is one read-only pilot in an explicitly selected
-real project. Evidence is the checkpoint, Bootstrap authority, Git
-identity/status, and continuity tests; fully governed workflow acceptance
-remains unverified.
+configuration. Next action is human publication review of this branch.
+Evidence is the checkpoint, Bootstrap authority, Git identity/status, and the
+full available test suite; fully governed workflow acceptance remains
+unverified.
 
 ## Stop
 
