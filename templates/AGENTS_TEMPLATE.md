@@ -19,10 +19,33 @@ Source truth wins when advisory/indexed information is stale.
 ## SESSION START
 1. Read AGENTS.md in full.
 2. Read KNOWN_GOOD_CONTRACTS.md.
-3. Read only the latest relevant CONTINUE_TOMORROW.md checkpoint.
-4. Read directly relevant task docs.
-5. Use Codebase Memory first where useful.
-6. Inspect git status before editing.
+3. Identify the active repository path and canonical remote.
+4. Recover only this repository's canonical CONTINUE_TOMORROW.md checkpoint.
+5. Validate repository path/remote ownership, branch, validated source
+   revision, current observed HEAD, original objective, approved scope, status,
+   recorded dirty state, contradictions, and staleness before planning. If the
+   checkpoint revision differs from HEAD, verify material source changes rather
+   than accepting or rejecting from the SHA mismatch alone.
+6. Reject foreign-project checkpoints. Never import another project's memory.
+   If this checkpoint is missing, use only this repository's authority, source,
+   tests, git history, and approved records.
+7. Read directly relevant task docs and approved records.
+8. Use Codebase Memory first where useful only when it is available,
+   operational, and correctly scoped.
+9. Inspect git status before editing.
+
+If the checkpoint is missing, contradictory, stale, or cannot be validated,
+stop with the applicable governed outcome. Do not infer project history from
+chat memory. If Codebase Memory is unavailable, mis-scoped, or blocked, record
+that state and use repository authority, git, source, tests, and approved
+records as fallback. Never restart, reconfigure, reindex, or repoint a memory
+daemon during recovery.
+
+Before planning or implementation, classify recovered items as
+`REQUIRED_FOR_OBJECTIVE`, `ALREADY_SATISFIED`, `BLOCKER`, or `PARKED`.
+Do not reopen `ALREADY_SATISFIED` work without new evidence. Cross-project
+references are non-authoritative context unless separately approved and
+verified.
 
 Do not repeatedly reread unchanged authority files in the same session.
 
@@ -132,12 +155,16 @@ One coherent task per commit.
 Push only the approved branch.
 
 ## HANDOFF
-When appropriate, update CONTINUE_TOMORROW.md with:
-- what changed
-- validation
-- commit/deployment state
-- blockers
-- one recommended next task
+At every governed task closeout, after parent acceptance, update the single
+canonical CONTINUE_TOMORROW.md checkpoint with the original objective/source,
+repository path/remote, branch and HEAD, approved/protected scope, binding decisions,
+verified completed work, evidence, failed approaches/blockers, current status,
+contradictions/staleness, Codebase Memory fallback state, and one next approved
+action or STOP_COMPLETE.
+
+The checkpoint is a concise projection of authoritative records, not a second
+authority or transcript. Do not create duplicate memory records. If status is
+STOP_COMPLETE, do not recommend or begin another task.
 
 ## FAILURE CLASSIFICATION
 Use:

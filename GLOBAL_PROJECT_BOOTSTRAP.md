@@ -5,6 +5,18 @@ Use a consistent engineering, governance, documentation, validation, and handoff
 
 This is a default. It does not override existing project authority.
 
+## 0A. GLOBAL ENGINEERING STANDARD
+
+Before project discovery or changes, read `GLOBAL_ENGINEERING_STANDARD.md`.
+It is the inherited, technology-independent engineering standard for projects
+initialized through this bootstrap. Assess its applicability, preserve
+stronger project and subsystem authority, and specialize by reference rather
+than copying the document when the project architecture permits.
+
+The one-file bootstrap experience is preserved: users need provide only this
+bootstrap entry point. Codex is responsible for discovering the canonical
+global standard in this repository.
+
 ## 0. CANONICAL ENTRY POINT
 
 When this repository is referenced for project initialization or assessment,
@@ -191,7 +203,10 @@ Codebase Memory MCP applies to every repository. If it is unavailable or
 unhealthy, do not automatically reinstall it, change `CBM_ALLOWED_ROOT`,
 restart or kill daemons, delete or rebuild indexes, modify global Codex/MCP
 configuration, or repoint another project's qualified configuration. Report
-the condition and continue with safe fallback discovery when permitted.
+the condition in the continuity checkpoint and continue with safe fallback
+discovery using repository authority, git, source, tests, and approved records
+when permitted. Mark memory-dependent claims `UNKNOWN` or `NOT_RUN`; never
+convert unavailable memory into `PASS`.
 
 ## 4. BOOTSTRAP DECISION
 If equivalent governance already exists, integrate with it.
@@ -251,6 +266,57 @@ Before large changes, establish what currently works using evidence such as:
 - documented contracts
 
 Record important proven behavior in KNOWN_GOOD_CONTRACTS.md.
+
+## 5A. CONTINUITY CHECKPOINT CONTRACT
+
+For every governed task, maintain exactly one canonical project continuity
+checkpoint using `CONTINUE_TOMORROW.md` or the established project equivalent.
+The checkpoint is a concise projection, not a second authority or a transcript.
+It must retain:
+- the original objective and its authoritative source;
+- repository identity, observed HEAD, branch, and environment;
+- approved and protected scope;
+- binding decisions and authority references;
+- verified completed work and evidence references;
+- failed approaches and blockers;
+- current status, contradictions, and staleness;
+- Codebase Memory state and any safe fallback used;
+- one next approved action, or `STOP_COMPLETE`.
+
+At task closeout, write or update the checkpoint after the parent outcome is
+accepted and before reporting the session complete. A missing, contradictory,
+or stale checkpoint is not a successful handoff. Do not create a second memory
+database, duplicate authoritative records, or silently rewrite historical
+failures.
+
+## 5B. PROJECT MEMORY OWNERSHIP
+
+Project memory is repository-owned. Each project has one canonical
+`CONTINUE_TOMORROW.md` (or an explicitly established project equivalent)
+inside that project's repository. A checkpoint is usable only after validating
+the active repository's canonical path or remote identity, branch, validated
+source revision, and current observed HEAD against the checkpoint. A
+checkpoint for another repository must be rejected; its objective, decisions,
+history, approvals, and evidence must not be imported as authority.
+
+Checkpoint versioning must distinguish the validated source revision, the
+checkpoint revision, and the current observed HEAD. A checkpoint may be
+updated after a source commit, so a HEAD mismatch is resolved by checking
+whether material source changes occurred since the validated revision; it is
+not accepted or rejected from the SHA mismatch alone. Record the current
+observed HEAD, material source changes since validation, and dirty-worktree
+evidence. A material contradiction remains fail-closed.
+
+If the checkpoint is missing, do not fall back to another project's memory.
+Use only the active project's authority, source, tests, git history, and
+approved records. Cross-project references are non-authoritative context unless
+separately approved and verified. A dirty working tree may remain valid when
+the checkpoint records the dirty state and no material contradiction exists;
+a matching HEAD alone does not prove freshness.
+
+Before planning, classify recovered items as `REQUIRED_FOR_OBJECTIVE`,
+`ALREADY_SATISFIED`, `BLOCKER`, or `PARKED`. Do not reopen an
+`ALREADY_SATISFIED` item without new evidence.
 
 ## 6. ONE TASK PER SESSION
 One meaningful engineering task per Codex session.
@@ -399,14 +465,21 @@ Before commit:
 One coherent task per commit.
 
 ## 18. HANDOFF
-When appropriate, update CONTINUE_TOMORROW.md with:
-- what changed
-- validation
-- commit/deployment state
-- blockers
-- exact recommended next task
+At every governed task closeout, update the canonical continuity checkpoint
+with the fields defined in `templates/CONTINUE_TOMORROW_TEMPLATE.md`:
+- original objective and source;
+- repository identity and observed HEAD;
+- approved/protected scope;
+- binding decisions;
+- verified completed work and evidence;
+- failed approaches and blockers;
+- current status, contradictions, and staleness;
+- Codebase Memory state and fallback;
+- one next approved action or `STOP_COMPLETE`.
 
-Do not turn it into a transcript.
+Do not turn it into a transcript or create a competing memory record. The
+checkpoint is written only after parent acceptance, while source documents,
+tests, approvals, and RepoGuard results remain authoritative.
 
 ## 19. FAILURE CLASSIFICATIONS
 PASS — completed and validated.
