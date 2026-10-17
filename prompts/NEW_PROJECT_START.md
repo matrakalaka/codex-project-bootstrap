@@ -43,6 +43,17 @@ Existing Known-Good Evidence:
 
 Tool / MCP Health:
 
+Run the repository-owned optional-tool discovery when this Bootstrap checkout
+is available:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/tool_discovery.py --json
+```
+
+Preserve explicit `AVAILABLE`, `NOT_INSTALLED`, `NOT_REGISTERED`,
+`INCOMPATIBLE`, and `BLOCKED` outcomes. A declarative registration is not
+session availability or operational proof.
+
 Tool:
 Configured:
 Available In Current Session:

@@ -17,6 +17,9 @@ Canonical repository: https://github.com/matrakalaka/codex-project-bootstrap
 
 Canonical bootstrap entry point: `GLOBAL_PROJECT_BOOTSTRAP.md`
 
+Optional tool discovery: `scripts/tool_discovery.py` and
+`BOOTSTRAP_TOOL_DISCOVERY_MATRIX.md`
+
 When Codex is given this repository URL for use against another project:
 
 1. Use this GitHub repository as the canonical bootstrap source of truth and read `GLOBAL_PROJECT_BOOTSTRAP.md` first.

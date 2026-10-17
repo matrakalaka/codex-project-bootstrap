@@ -1,0 +1,51 @@
+{
+  "schema_version": "bootstrap_tools.v1",
+  "tools": [
+    {
+      "id": "open-terminal",
+      "name": "Open Terminal",
+      "kind": "host_application_or_mcp",
+      "upstream": null,
+      "source_required": true,
+      "mcp": false,
+      "status_policy": "BLOCKED_UNRESOLVED_IDENTITY",
+      "description": "The requested provider/repository is not identified. macOS Terminal.app presence is not treated as the requested integration."
+    },
+    {
+      "id": "mirofish",
+      "name": "MiroFish",
+      "kind": "application",
+      "upstream": "https://github.com/666ghj/MiroFish",
+      "verified_ref": "v0.1.2",
+      "source_required": false,
+      "mcp": false,
+      "status_policy": "OPTIONAL_LOCAL_APPLICATION",
+      "description": "Multi-agent scenario simulation application; no MCP interface was assumed."
+    },
+    {
+      "id": "loadersz-core",
+      "name": "loadersz-core",
+      "kind": "javascript_library",
+      "upstream": "https://github.com/lumberjacque/loadersz-core",
+      "package": "loadersz",
+      "verified_ref": "v0.9.0",
+      "source_required": false,
+      "mcp": false,
+      "status_policy": "OPTIONAL_PROJECT_DEPENDENCY",
+      "description": "Framework-agnostic browser Web Component library; it is not an MCP server or CLI."
+    },
+    {
+      "id": "api-anything",
+      "name": "api-anything",
+      "kind": "cli_mcp_server",
+      "upstream": "https://github.com/goodnight000/api-anything",
+      "verified_ref": "b20d809d218a1273c1941b72a8cd8188e11da7cc",
+      "runtime": "Node.js >= 22.13.0",
+      "source_required": false,
+      "mcp": true,
+      "mcp_registration": "tooling/mcp.registration.json",
+      "status_policy": "OPTIONAL_LOCAL_TOOL",
+      "description": "Local CLI and MCP server. Installation is intentionally project/owner-scoped; credentials remain outside Bootstrap."
+    }
+  ]
+}

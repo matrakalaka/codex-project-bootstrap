@@ -29,6 +29,16 @@ After installation:
 - confirm existing testing/tooling remains intact
 - git-ignore generated artifacts where appropriate
 
+For Bootstrap's optional integrations, run the read-only checker before and
+after installation:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/tool_discovery.py --json
+```
+
+Do not turn a declarative MCP registration into an `AVAILABLE` result until
+the executable, runtime compatibility, and a safe health check pass.
+
 If explicitly approved, complete routine install/test/commit/push actions without repeated approval under AGENTS.md autonomy.
 
 Then STOP.

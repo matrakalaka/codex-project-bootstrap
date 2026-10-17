@@ -1,0 +1,12 @@
+{
+  "schema_version": "bootstrap_mcp_registration.v1",
+  "mcpServers": {
+    "api-anything": {
+      "command": "api-anything",
+      "args": ["mcp"],
+      "env": {},
+      "required_tool_id": "api-anything",
+      "permission_boundary": "local_operations_only; credentials remain in the tool's secure local store"
+    }
+  }
+}
