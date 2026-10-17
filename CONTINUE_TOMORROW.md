@@ -9,6 +9,46 @@ packet, or conversation transcript.
 
 # LATEST CHECKPOINT
 
+## Current task projection — four-tool integration and sandbox recovery
+
+**Date:** 2026-10-17
+**Repository:** `/Users/admin/codex-bootstrap-four-tool`
+**Remote:** `https://github.com/matrakalaka/codex-project-bootstrap`
+**Branch:** `integration/four-tool-sandbox-20261017`
+**Current observed HEAD:** `825431647280f4c19a428b00e2639d23d6305519`
+**Status:** PARTIAL — Bootstrap integration is implemented and verified;
+Open Terminal identity remains blocked, and optional external tools are not
+installed in this environment.
+
+**Objective:** Make the four requested capabilities explicitly discoverable,
+accurately classified, safely registered where an MCP interface exists, and
+documented, while providing a fail-closed host-execution bridge.
+
+**Implemented evidence:** `BOOTSTRAP_FOUR_TOOL_INTEGRATION.md`,
+`BOOTSTRAP_SANDBOX_RECOVERY.md`, `BOOTSTRAP_TOOL_DISCOVERY_MATRIX.md`,
+`tooling/bootstrap_tools.json`, `tooling/mcp.registration.json`,
+`scripts/tool_discovery.py`, and `scripts/host_exec_bridge.py`.
+
+**Tool outcomes:** Open Terminal `BLOCKED`; MiroFish `NOT_INSTALLED`;
+loadersz-core `NOT_INSTALLED`; api-anything `NOT_INSTALLED` with a valid
+declarative MCP registration. The discovery command and fresh-session
+subprocess test report these outcomes without omission.
+
+**Validation:** 45 script/tool tests, 18 continuity tests, 13 contract/North
+Star tests, and 9 playbook tests passed. JSON parsing, Python compilation,
+and `git diff --check` passed. Host bridge tests use only `fixture_echo` and
+allowlisted synthetic operations.
+
+**Protected scope:** original `/Users/admin/codex-project-bootstrap` main
+worktree, all other worktrees, UltimateBoxManager, ADB, Android devices, port
+15041, global Codex configuration, credentials, production, pushes, merges,
+and deployment were untouched.
+
+**Next action:** Independent review of commit `8254316`, followed by owner
+provisioning of the exact Open Terminal source and separately approved
+installation/session registration for any optional tool that should become
+operational. Do not claim `AVAILABLE` from the declarative registration alone.
+
 **Checkpoint ID:** bootstrap-memory-integration-qualification
 **Date:** 2026-10-16
 **Timestamp:** 2026-10-17T00:52:31Z
