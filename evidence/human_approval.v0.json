@@ -1,0 +1,40 @@
+{
+  "schema_version": "human_approval.v0",
+  "approval_id": "approval-bootstrap-memory-integration-qualification-seq-1",
+  "correlation_id": "bootstrap-memory-20261017",
+  "task_id": "bootstrap-memory-integration-qualification",
+  "assessment_id": "bootstrap-memory-integration-qualification",
+  "assessment_hash": "sha256:46c43c58a58a25f6f4c98224e564d6f41d08ec8470578aba256a640bf273fc65",
+  "repository_identity": "https://github.com/matrakalaka/codex-project-bootstrap.git",
+  "authorized_head": "a169c2fe5f6772cc5a7466c889356352ea951e6f",
+  "objective_hash": "sha256:c7f153c88728ab7b0dc609a6c04f1667499a4310554ebfb2ae5dac7f744d3319",
+  "allowed_paths": [
+    "GLOBAL_ENGINEERING_STANDARD.md",
+    "GLOBAL_PROJECT_BOOTSTRAP.md",
+    "prompts/NEW_TASK_START.md",
+    "templates/AGENTS_TEMPLATE.md",
+    "templates/CONTINUE_TOMORROW_TEMPLATE.md",
+    "tests/test_continuity_checkpoint.py",
+    "CONTINUE_TOMORROW.md",
+    "PHASE_2A_INDEPENDENT_APPROVAL_REVIEW.md",
+    "evidence/bootstrap_assessment.v0.json"
+  ],
+  "forbidden_paths": [
+    "README.md",
+    ".git/**",
+    "/Users/admin/codex-project-bootstrap/**",
+    "/Users/admin/UltimateBoxManager/**",
+    "production/**",
+    "deploy/**",
+    "**/secrets/**",
+    "**/credentials/**"
+  ],
+  "approved": true,
+  "approver": {
+    "type": "HUMAN",
+    "identifier": "matrakalaka"
+  },
+  "approved_at": "2026-10-17T01:19:40Z",
+  "reason": "Project owner approved the technically qualified Bootstrap memory integration and its exact verified assessment, objective, scope, and authorized HEAD. Historical Phase 2A provenance remains INCOMPLETE; this artifact does not authorize publication, push, merge, or deployment.",
+  "approval_sequence": 1
+}

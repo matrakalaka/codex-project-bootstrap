@@ -1,0 +1,81 @@
+{
+  "schema_version": "bootstrap_assessment.v0",
+  "assessment_id": "bootstrap-memory-integration-qualification",
+  "correlation_id": "bootstrap-memory-20261017",
+  "task_id": "bootstrap-memory-integration-qualification",
+  "source_revision": "a169c2fe5f6772cc5a7466c889356352ea951e6f",
+  "target": {
+    "repository_locator": "/Users/admin/codex-project-bootstrap-memory-integration",
+    "observed_identity": "https://github.com/matrakalaka/codex-project-bootstrap.git",
+    "observed_head": "a169c2fe5f6772cc5a7466c889356352ea951e6f",
+    "observed_branch": "integration/bootstrap-memory-20261017",
+    "worktree_state": "CLEAN"
+  },
+  "authority": {
+    "sources": [
+      {"path": "PROJECT_NORTH_STAR.md", "role": "global objective discipline"},
+      {"path": "GLOBAL_PROJECT_BOOTSTRAP.md", "role": "bootstrap and continuity authority"},
+      {"path": "GLOBAL_ENGINEERING_STANDARD.md", "role": "normative engineering standard"},
+      {"path": "CONTINUE_TOMORROW.md", "role": "repository continuity projection"},
+      {"path": "PHASE_2A_INDEPENDENT_APPROVAL_REVIEW.md", "role": "review evidence and owner decision"},
+      {"path": "contracts/bootstrap_assessment.v0.schema.json", "role": "assessment contract"},
+      {"path": "contracts/human_approval.v0.schema.json", "role": "approval contract"}
+    ],
+    "authority_fingerprint": null,
+    "conflicts": [
+      {"condition": "historical Phase 2A approval provenance is incomplete", "resolution": "preserve as incomplete; require fresh binding approval"},
+      {"condition": "continuity checkpoint predates current documentation commits", "resolution": "use current git identity and this assessment for current bindings"}
+    ],
+    "resolution_status": "PARTIAL"
+  },
+  "tool_health": [
+    {
+      "tool": "Codebase Memory",
+      "configured": "UNKNOWN",
+      "available_in_current_session": "UNKNOWN",
+      "correctly_scoped_to_current_project": "NO",
+      "operational": "UNKNOWN",
+      "required_by_existing_project_authority": "NO",
+      "bootstrap_blocker": "NO",
+      "observed_gap": "Recorded configured root is /Users/admin/UltimateBoxManager, not this repository",
+      "recommended_action": "NONE; use repository evidence"
+    }
+  ],
+  "known_good_references": [
+    "CONTINUE_TOMORROW.md:115-124",
+    "PHASE_2A_INDEPENDENT_APPROVAL_REVIEW.md:60-78",
+    "GLOBAL_PROJECT_BOOTSTRAP.md:270-319,468-503",
+    "GLOBAL_ENGINEERING_STANDARD.md:269-291",
+    "tests/",
+    "contracts/",
+    "playbooks/",
+    "scripts/"
+  ],
+  "recommended_scope": {
+    "allowed_paths": [
+      "GLOBAL_ENGINEERING_STANDARD.md",
+      "GLOBAL_PROJECT_BOOTSTRAP.md",
+      "prompts/NEW_TASK_START.md",
+      "templates/AGENTS_TEMPLATE.md",
+      "templates/CONTINUE_TOMORROW_TEMPLATE.md",
+      "tests/test_continuity_checkpoint.py",
+      "CONTINUE_TOMORROW.md",
+      "PHASE_2A_INDEPENDENT_APPROVAL_REVIEW.md",
+      "evidence/bootstrap_assessment.v0.json"
+    ],
+    "forbidden_paths": [
+      "README.md",
+      ".git/**",
+      "/Users/admin/codex-project-bootstrap/**",
+      "/Users/admin/UltimateBoxManager/**",
+      "production/**",
+      "deploy/**",
+      "**/secrets/**",
+      "**/credentials/**"
+    ]
+  },
+  "safe_to_bootstrap": false,
+  "human_readable_assessment": "The Bootstrap integration at a169c2fe5f6772cc5a7466c889356352ea951e6f is technically qualified by existing 77/77 evidence and has an explicitly recorded project-owner review. The owner decision does not bind this assessment hash, objective hash, exact scope, or current HEAD. Historical Phase 2A approval remains INCOMPLETE. Prepare the formal human approval payload for fresh owner confirmation; do not issue approval or authorize publication.",
+  "assessment_hash": "sha256:46c43c58a58a25f6f4c98224e564d6f41d08ec8470578aba256a640bf273fc65",
+  "created_at": "2026-10-17T01:20:00Z"
+}
