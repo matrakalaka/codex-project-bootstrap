@@ -5,7 +5,8 @@
 - **Review packet status:** `APPROVAL_READY`
 - **Technical qualification:** `PASS`
 - **Independent review:** `NOT ESTABLISHED`
-- **Human approval:** `PENDING`
+- **Project-owner approval:** `APPROVED`
+- **Human approval:** `PROJECT_OWNER_APPROVED — not independent Phase 2A approval`
 - **Publication authorization:** `NOT AUTHORIZED`
 - **Historical Phase 2A approval:** `INCOMPLETE`
 
@@ -18,8 +19,8 @@ independent review.
 - **Repository:** `/Users/admin/codex-project-bootstrap-memory-integration`
 - **Remote:** `https://github.com/matrakalaka/codex-project-bootstrap.git`
 - **Branch:** `integration/bootstrap-memory-20261017`
-- **HEAD:** `33854e8416db78c4dc08e5fc8d4df348b42fcae5`
-- **Expected HEAD:** `33854e8` — matches exactly
+- **HEAD:** `8aa77242ad2b5230ccdc2631d1ae3aac237757b2`
+- **Expected HEAD:** `8aa7724` — matches exactly
 - **Worktree at review start:** CLEAN
 - **Protected:** original `main` worktree, its dirty `README.md`, pushes,
   merges, rebases, resets, deployments, implementation files, and governance
@@ -44,6 +45,8 @@ to the protected `main` worktree.
   `GLOBAL_PROJECT_BOOTSTRAP.md`, `prompts/NEW_TASK_START.md`, templates, the
   checkpoint, and continuity tests.
 - `33854e8` — recorded the integration qualification checkpoint correction.
+- `8aa7724` — preserved this approval-review packet; no governed
+  implementation or qualification source changed after the 77/77 evidence.
 
 The implementation preserves canonical-source resolution, North Star scope
 discipline, authority and approval boundaries, RepoGuard/Loop precedence,
@@ -105,6 +108,29 @@ The existing technical qualification session is not independent approval. The
 current review also does not self-approve and does not impersonate a separate
 reviewer.
 
+## Project-owner approval record
+
+- **Decision:** `APPROVED` for the qualified Bootstrap integration at exact
+  HEAD `8aa77242ad2b5230ccdc2631d1ae3aac237757b2`.
+- **Approver:** Project owner, explicitly identified by the user as the owner
+  of this Mac and project.
+- **Provenance:** Explicit user instruction in the current task; recorded by
+  Codex as a project-owner decision, not as independent reviewer evidence.
+- **Decision date:** `2026-10-16` (America/New_York).
+- **Recorded at:** `2026-10-17T01:05:30Z`.
+- **Approved scope:** The existing, technically qualified Bootstrap
+  integration and its documentation-only approval record; no implementation
+  changes, publication, or protected-boundary changes.
+- **Technical evidence preserved:** `77/77 PASS`, as recorded in the prior
+  qualification evidence.
+- **Independent Phase 2A review:** `NOT ESTABLISHED`.
+- **Publication authorization:** `NOT AUTHORIZED`.
+- **Unresolved limitation:** The historical independent Phase 2A approval
+  packet and independent reviewer decision remain absent.
+
+This owner approval does not satisfy or backdate the independent Phase 2A
+review requirement and does not authorize publication.
+
 ## Required human decision
 
 An independent human reviewer, separate from the implementation/qualification
@@ -133,14 +159,17 @@ not established, the result remains `BLOCKED_PRECONDITION` for publication.
 - **Review result:** `PENDING — PASS / FAIL`
 - **Approval authority:** `PENDING`
 - **Approval artifact ID:** `PENDING`
-- **Authorized HEAD:** `PENDING — expected 33854e8416db78c4dc08e5fc8d4df348b42fcae5`
-- **Human approval:** `PENDING — APPROVED / REJECTED`
-- **Publication authorization:** `PENDING — AUTHORIZED / NOT AUTHORIZED`
-- **Decision reason and unresolved limitations:** `PENDING`
+- **Authorized HEAD:** `PENDING — independent Phase 2A authority required;
+  project-owner approval applies to 8aa77242ad2b5230ccdc2631d1ae3aac237757b2`
+- **Human approval:** `PROJECT_OWNER_APPROVED; independent Phase 2A approval
+  remains PENDING`
+- **Publication authorization:** `NOT AUTHORIZED`
+- **Decision reason and unresolved limitations:** Project owner approved the
+  qualified integration; independent Phase 2A provenance remains incomplete.
 
 ## Next action
 
-Have an authorized independent human reviewer complete the decision fields and
-issue or reject a human approval artifact bound to this exact repository,
-objective, scope, evidence, and HEAD. Until that occurs, publication remains
-`NOT AUTHORIZED`.
+Have an authorized independent human reviewer complete the remaining decision
+fields and issue or reject a human approval artifact bound to this exact
+repository, objective, scope, evidence, and HEAD. Until that occurs,
+publication remains `NOT AUTHORIZED`.
