@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -10,7 +11,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from . import __version__, brief, bundle, context, contracts, gitinfo, installer, playbooks, report, runner, tui
+from . import __version__, brief, bundle, context, contracts, gitinfo, installer, playbooks, report, runner, tui, platform
 from . import ledger as L
 from .config import ConfigError, Settings, load_settings
 
@@ -373,6 +374,19 @@ def cmd_playbooks(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_platform_demo(args: argparse.Namespace) -> int:
+    """Run the local-only signed sync/team/entitlement integration workflow."""
+    import tempfile
+    root = Path(args.root) if args.root else Path(tempfile.mkdtemp(prefix="agentterm-platform-"))
+    try:
+        result = platform.integrated_local_flow(root)
+    except platform.CryptoUnavailable as exc:
+        raise Fail(str(exc))
+    print(json.dumps({k: v for k, v in result.items() if k != "ciphertext"}, sort_keys=True))
+    print(f"local platform evidence: {root}")
+    return 0
+
+
 # --------------------------------------------------------------------- parser
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentterm", description="Install, run and remember for AI coding agents. No compaction: the terminal owns the memory.")
@@ -471,6 +485,8 @@ def build_parser() -> argparse.ArgumentParser:
     add("tui", cmd_tui, "terminal dashboard")
     sp = add("playbooks", cmd_playbooks, "list or show engineering playbooks")
     sp.add_argument("id", nargs="?")
+    sp = add("platform-demo", cmd_platform_demo, "exercise local signed sync, team authorization, revocation and entitlements")
+    sp.add_argument("--root", help="local evidence directory (default: temporary directory)")
     return p
 
 

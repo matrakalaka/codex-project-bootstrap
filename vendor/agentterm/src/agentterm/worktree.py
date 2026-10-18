@@ -129,6 +129,7 @@ class GitAdapter(Protocol):
     def create(self, source: Path, destination: Path, branch: str, head: str) -> None: ...
     def merge(self, source: Path, branch: str, target_ref: str) -> str: ...
     def discard(self, source: Path, destination: Path) -> None: ...
+    def preview(self, source: Path, branch: str, target_ref: str) -> str: ...
 
 
 def _run(args: list[str], cwd: Path, *, timeout: int = 30) -> str:
@@ -145,6 +146,7 @@ class ProductionGitAdapter:
     def create(self, source: Path, destination: Path, branch: str, head: str) -> None: self._deny()
     def merge(self, source: Path, branch: str, target_ref: str) -> str: self._deny()
     def discard(self, source: Path, destination: Path) -> None: self._deny()
+    def preview(self, source: Path, branch: str, target_ref: str) -> str: self._deny()
 
 
 class SyntheticGitAdapter:
@@ -178,6 +180,12 @@ class SyntheticGitAdapter:
     def discard(self, source: Path, destination: Path) -> None:
         self._check(source); self._destination_check(destination)
         _run(["worktree", "remove", "--force", str(destination)], source)
+
+    def preview(self, source: Path, branch: str, target_ref: str) -> str:
+        self._check(source)
+        if target_ref not in {"main", "master"} and not target_ref.startswith("refs/heads/"):
+            raise WorktreeError("synthetic merge target is not an explicit local ref")
+        return _run(["merge-tree", "--write-tree", target_ref, branch], source)
 
 
 class WorktreeManager:
@@ -271,6 +279,33 @@ class WorktreeManager:
         return record
 
     def get(self, worktree_id: str) -> WorktreeRecord: return self._load(worktree_id)
+
+    def admit_repository(self, source: Path | str) -> RepositoryIdentity:
+        """Read-only admission check; it never creates or changes Git state."""
+        source = Path(source).resolve()
+        if source == self.app_root or self.app_root in source.parents:
+            raise WorktreeError("application state root cannot be admitted as a source repository")
+        return RepositoryIdentity.from_root(source)
+
+    def status(self, worktree_id: str) -> dict[str, Any]:
+        record = self._load(worktree_id); fact = snapshot(record.path)
+        if not fact.is_git or fact.identity != record.repository.remote and record.repository.remote is not None:
+            raise IntegrityError("managed worktree repository identity changed")
+        return {"worktree_id": record.worktree_id, "state": record.state.value, "path": record.path,
+                "branch": fact.branch, "head": fact.head, "dirty": fact.dirty,
+                "dirty_paths": list(fact.dirty_paths), "lease_until": record.lease_until}
+
+    def preview_merge(self, worktree_id: str, target_ref: str = "main") -> str:
+        record = self._load(worktree_id)
+        if record.state != State.READY_FOR_REVIEW: raise WorktreeError("merge preview requires READY_FOR_REVIEW")
+        return self.adapter.preview(Path(record.repository.root), record.branch, target_ref)
+
+    def archive(self, worktree_id: str, destination: Path | str) -> Path:
+        """Copy evidence without deleting or changing the managed worktree."""
+        record = self._load(worktree_id); target = Path(destination).resolve(); self._path_safe(target)
+        if target.exists(): raise WorktreeError("archive destination already exists")
+        shutil.copytree(record.path, target, symlinks=False)
+        return target
 
     def transition(self, worktree_id: str, state: State) -> WorktreeRecord:
         with self._lock():

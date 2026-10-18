@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Matias Almonte" }]
-dependencies = []
+dependencies = ["cryptography>=42,<51"]
 
 [project.optional-dependencies]
 dev = ["pytest"]

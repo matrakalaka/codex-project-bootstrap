@@ -51,6 +51,10 @@ def test_create_isolation_and_state_authentication(tmp_path, fixture_repo):
         m.create(fixture_repo, task_id="t", owner=actor, grants=[])
     record = m.create(fixture_repo, task_id="t", owner=actor, grants=grants)
     grants = grants + [Grant(actor, "worktree.discard", record.worktree_id, grant_id="discard-specific")]
+    status = m.status(record.worktree_id)
+    assert status["state"] == "ACTIVE" and status["branch"].startswith("agentterm/")
+    archive = m.archive(record.worktree_id, m.worktrees_root / "archive-copy")
+    assert archive.exists() and (archive / "tracked.txt").exists()
     assert record.state is State.ACTIVE and record.repository.root == str(fixture_repo)
     (fixture_repo / "original.txt").write_text("must remain absent from agent\n")
     (record_path := __import__("pathlib").Path(record.path) / "agent.txt").write_text("agent\n")
@@ -70,6 +74,7 @@ def test_lifecycle_approval_binding_merge_and_replay(tmp_path, fixture_repo):
     (work / "change.txt").write_text("change\n")
     _git(work, "add", "."); _git(work, "commit", "-q", "-m", "agent change")
     m.transition(record.worktree_id, State.READY_FOR_REVIEW)
+    assert m.preview_merge(record.worktree_id, "main")
     approval = m.approve(record.worktree_id, operation="merge", actor=actor, grants=grants,
                           target_ref="main", review_digest="sha256:" + "a" * 64)
     merged = m.merge(approval)
