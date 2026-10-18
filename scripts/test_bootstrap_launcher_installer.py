@@ -1,5 +1,6 @@
 import hashlib
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -113,6 +114,9 @@ class BootstrapLauncherInstallerTests(unittest.TestCase):
         self.assertIn("--source-dir", text)
         self.assertNotIn("raw.githubusercontent.com", text)
         self.assertNotIn("canonical_revision=", text)
+        self.assertIn('agentterm_mode=0', text)
+        self.assertIn('--approve-agentterm-init', text)
+        self.assertIn('scripts/bootstrap_session.py', text)
 
     def test_historical_fallback_hash_is_verified(self):
         self.assertEqual(VERIFIED_FALLBACK_RESOLVER_SHA256, PUBLISHED_RESOLVER_SHA256)
@@ -178,6 +182,90 @@ class BootstrapLauncherInstallerTests(unittest.TestCase):
             self.assertEqual(cwd_log.read_text(encoding="utf-8").strip(), str(target.resolve()))
             self.assertEqual(dirty_file.read_text(encoding="utf-8"), "protected dirty work\n")
             self.assertEqual(sorted(path.name for path in target.iterdir()), [dirty_file.name])
+
+    @unittest.skipUnless(shutil.which("zsh"), "requires zsh for the Unix launcher integration test")
+    def test_agentterm_mode_requires_explicit_second_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target"
+            target.mkdir()
+            dirty_file = target / "preexisting-work.txt"
+            dirty_file.write_text("protected dirty work\n", encoding="utf-8")
+            git = shutil.which("git")
+            self.assertIsNotNone(git)
+            subprocess.run([git, "init", "-q"], cwd=target, check=True)
+            subprocess.run([git, "config", "user.email", "bootstrap-test@example.invalid"], cwd=target, check=True)
+            subprocess.run([git, "config", "user.name", "Bootstrap Test"], cwd=target, check=True)
+            subprocess.run([git, "add", dirty_file.name], cwd=target, check=True)
+            subprocess.run([git, "commit", "-qm", "fixture"], cwd=target, check=True)
+
+            launcher = root / "launcher.zsh"
+            launcher.write_bytes(INSTALLED_LAUNCHER)
+            fake_git = root / "git"
+            fake_git.write_text(
+                "#!/bin/sh\n"
+                "if [ \"$1\" = clone ]; then\n"
+                "  destination=\"$8\"\n"
+                "  mkdir -p \"$destination\"\n"
+                f"  cp -R {shlex.quote(str(ROOT / 'scripts'))} \"$destination/\"\n"
+                f"  cp -R {shlex.quote(str(ROOT / 'vendor'))} \"$destination/\"\n"
+                "  exit 0\n"
+                "fi\n"
+                f"exec {shlex.quote(git)} \"$@\"\n",
+                encoding="utf-8",
+            )
+            fake_git.chmod(0o755)
+            fake_python = root / "python3"
+            fake_python.write_text(
+                "#!/bin/sh\n"
+                "case \"$1\" in\n"
+                "  */bootstrap_authority.py)\n"
+                "    output=''\n"
+                "    previous=''\n"
+                "    for argument in \"$@\"; do\n"
+                "      if [ \"$previous\" = --output-dir ]; then output=\"$argument\"; fi\n"
+                "      previous=\"$argument\"\n"
+                "    done\n"
+                "    mkdir -p \"$output\"\n"
+                "    printf '%s\\n' '# synthetic authority' > \"$output/GLOBAL_PROJECT_BOOTSTRAP.md\"\n"
+                "    printf '%s\\n' '# synthetic north star' > \"$output/PROJECT_NORTH_STAR.md\"\n"
+                "    printf '%s\\n' '{\"source\":\"canonical_git\",\"revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"files\":{\"GLOBAL_PROJECT_BOOTSTRAP.md\":\"synthetic\"}}'\n"
+                "    exit 0\n"
+                "    ;;\n"
+                "esac\n"
+                f"exec {shlex.quote(shutil.which('python3') or 'python3')} \"$@\"\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+            fake_codex = root / "codex"
+            fake_codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            fake_codex.chmod(0o755)
+            fake_agentterm = root / "agentterm"
+            fake_agentterm.write_text(
+                "#!/bin/sh\n"
+                "if [ \"$1\" = --version ]; then printf '%s\\n' 'agentterm 0.1.0'; exit 0; fi\n"
+                "if [ \"$1\" = --help ]; then printf '%s\\n' 'synthetic help'; exit 0; fi\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            fake_agentterm.chmod(0o755)
+
+            env = {**os.environ, "PATH": f"{root}:{os.environ['PATH']}"}
+            denied = subprocess.run(
+                ["zsh", "-f", "-c", f"source {shlex.quote(str(launcher))}; codex-bootstrap --agentterm"],
+                cwd=target, env=env, capture_output=True, text=True,
+            )
+            self.assertEqual(denied.returncode, 2, denied.stderr)
+            self.assertIn("explicit --approve-agentterm-init", denied.stdout + denied.stderr)
+            self.assertFalse((target / ".agentterm").exists())
+
+            approved = subprocess.run(
+                ["zsh", "-f", "-c", f"source {shlex.quote(str(launcher))}; codex-bootstrap --agentterm --approve-agentterm-init"],
+                cwd=target, env=env, capture_output=True, text=True,
+            )
+            self.assertEqual(approved.returncode, 0, approved.stdout + approved.stderr)
+            self.assertTrue((target / ".agentterm" / "bootstrap-session.json").is_file())
+            self.assertEqual(dirty_file.read_text(encoding="utf-8"), "protected dirty work\n")
 
     def test_installer_accepts_normal_future_head(self):
         with tempfile.TemporaryDirectory() as directory:

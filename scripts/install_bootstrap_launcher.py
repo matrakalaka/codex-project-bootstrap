@@ -129,6 +129,20 @@ Perform READ-ONLY discovery only, preserve existing project authority, return th
 
 
 INSTALLED_LAUNCHER = b'''codex-bootstrap() {
+  local agentterm_mode=0
+  local agentterm_approved=0
+  if [ "${1:-}" = "--agentterm" ]; then
+    agentterm_mode=1
+    shift
+  fi
+  if [ "${1:-}" = "--approve-agentterm-init" ]; then
+    agentterm_approved=1
+    shift
+  fi
+  if [ "$agentterm_mode" -eq 0 ] && [ "$agentterm_approved" -eq 1 ]; then
+    printf '%s\n' "BLOCKED_PRECONDITION: --approve-agentterm-init requires --agentterm; STOP." >&2
+    return 2
+  fi
   local canonical_repository="https://github.com/matrakalaka/codex-project-bootstrap.git"
   local canonical_ref="main"
   local fallback_resolver_sha256="b2a307b5d8c29604e652941e63df0bda77ae16e17cc6d5332e7ea03f7cd4ad84"
@@ -192,6 +206,8 @@ PY
     return "$resolver_status"
   fi
 
+  printf '%s\n' "$authority_json" > "$staging/authority.json"
+
   codex --sandbox read-only "Initialize this target project using the canonical bootstrap repository:
 
 https://github.com/matrakalaka/codex-project-bootstrap
@@ -205,6 +221,30 @@ $authority_dir
 Perform READ-ONLY discovery only, preserve existing project authority, return the PROJECT BOOTSTRAP ASSESSMENT, and stop at the human-approval gate. Do not modify the target project before approval."
 
   local codex_status=$?
+  if [ "$codex_status" -ne 0 ]; then
+    rm -R "$staging"
+    return "$codex_status"
+  fi
+  if [ "$agentterm_mode" -eq 1 ]; then
+    if [ "$agentterm_approved" -ne 1 ]; then
+      printf '%s\n' "BLOCKED_PRECONDITION: AgentTerm initialization requires explicit --approve-agentterm-init after read-only discovery; STOP." >&2
+      rm -R "$staging"
+      return 2
+    fi
+    if [ ! -f "$canonical_checkout/scripts/bootstrap_session.py" ]; then
+      printf '%s\n' "BLOCKED_PRECONDITION: published Bootstrap does not contain the AgentTerm lifecycle entry point; STOP." >&2
+      rm -R "$staging"
+      return 2
+    fi
+    python3 "$canonical_checkout/scripts/bootstrap_session.py" \
+      --bootstrap-root "$canonical_checkout" \
+      --project-root "$PWD" \
+      init \
+      --authority-json "$staging/authority.json"
+    local agentterm_status=$?
+    rm -R "$staging"
+    return "$agentterm_status"
+  fi
   rm -R "$staging"
   return "$codex_status"
 }
