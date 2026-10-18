@@ -127,15 +127,22 @@ class CryptoProvider:
 
 
 class MacOSKeychainStorage:
-    """Keychain contract; native implementation is intentionally not activated."""
+    """Native Security.framework adapter; activation remains review-gated."""
     production_ready = False
-    def __init__(self, service: str = "agentterm", account: str = "default", *, runner=None):
-        if runner is None: raise PlatformError("native Keychain adapter requires independent review before activation")
-        self.service, self.account, self.runner = service, account, runner
+    def __init__(self, service: str = "com.agentterm.identity", account: str = "default", *, helper=None, runner=None):
+        if runner is not None: self._runner = runner; self._storage = None; return
+        if helper is None: raise PlatformError("native Keychain helper path is required; refusing insecure fallback")
+        from .keychain import NativeKeychainStorage
+        self._storage = NativeKeychainStorage(helper, service=service); self._runner = None; self.account = account
     def put(self, key_id: str, private: bytes) -> None:
-        raise PlatformError("Keychain adapter contract is not activated")
+        if self._runner is not None: return self._runner("put", key_id, private)
+        self._storage.put(key_id, private)
     def get(self, key_id: str) -> bytes:
-        raise PlatformError("Keychain adapter contract is not activated")
+        if self._runner is not None: return self._runner("get", key_id)
+        return self._storage.get(key_id)
+    def delete(self, key_id: str) -> None:
+        if self._runner is not None: return self._runner("delete", key_id)
+        self._storage.delete(key_id)
 
 
 @dataclass(frozen=True)

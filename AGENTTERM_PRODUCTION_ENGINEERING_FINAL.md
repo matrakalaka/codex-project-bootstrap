@@ -58,6 +58,11 @@ cd /Users/admin/codex-agentterm-phase1
 - Current sandbox staging acceptance: blocked by loopback policy; not counted.
 - Wheel packaging, compilation, CLI demo, health, and diff checks: passed.
 
+The Security.framework helper and fail-closed wrapper are now implemented, but
+native compilation/qualification is blocked on this host by the Swift
+toolchain/SDK mismatch and module-cache permissions. See
+`AGENTTERM_NATIVE_AND_HOSTED_QUALIFICATION.md`.
+
 ## Remaining external gates
 
 1. Implement and independently review a native Security.framework Keychain

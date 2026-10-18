@@ -32,7 +32,7 @@ schema version.
 
 ## Qualification evidence
 
-- AgentTerm strict suite: 126 passed, 2 loopback-bind skips (including the
+- AgentTerm strict suite: 127 passed, 2 loopback-bind skips (including the
   staging acceptance test).
 - Bootstrap/security/continuity suite: 101 passed, 4 AF_UNIX skips.
 - Combined host-targeted command in sandbox: 23 passed, 5 explicit skips.
