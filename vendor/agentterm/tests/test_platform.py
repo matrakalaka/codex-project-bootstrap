@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from agentterm.platform import (AuthorizationDenied, ConflictError, CryptoProvider, EntitlementService,
-                                FileKeyStorage, LocalSyncServer, OfflineQueue, PlatformError, SyncClient, TeamService, TrustRegistry,
+                                FileKeyStorage, LocalSyncServer, LoopbackSyncService, LoopbackSyncTransport, OfflineQueue, PlatformError, SyncClient, TeamService, TrustRegistry,
                                 create_device, integrated_local_flow)
 
 
@@ -117,3 +117,44 @@ def test_billing_event_is_idempotent_and_size_limits_apply(tmp_path):
     registry, alice, private, _, _, server, key = setup_platform(tmp_path)
     with pytest.raises(PlatformError): SyncClient(alice, private, key, server).publish("large", b"x" * (LocalSyncServer.max_envelope_bytes + 1), sequence=1)
     server.close()
+
+
+def test_loopback_transport_is_authenticated_and_bounded(tmp_path):
+    registry, alice, private, bob, _, server, key = setup_platform(tmp_path)
+    try:
+        service = LoopbackSyncService(server); service.start()
+    except PermissionError:
+        server.close(); pytest.skip("host sandbox denies loopback bind; transport remains host-unqualified")
+    try:
+        transport = LoopbackSyncTransport(service); client = SyncClient(alice, private, key, transport)
+        envelope = client.publish("http", b"loopback", sequence=1)
+        assert SyncClient(bob, private, key, server).consume(transport.pull(bob, "project")[0]) == b"loopback"
+        service.token = "wrong"
+        with pytest.raises(PlatformError): transport.upload(envelope)
+    finally:
+        service.close(); server.close()
+
+
+def test_corrupt_database_is_quarantined_not_deleted(tmp_path):
+    path = tmp_path / "corrupt.db"; path.write_bytes(b"not sqlite")
+    quarantined = LocalSyncServer.quarantine_corrupt(path)
+    assert quarantined.exists() and not path.exists()
+
+
+def test_sync_schema_migrates_legacy_objects_transactionally(tmp_path):
+    path = tmp_path / "legacy.db"; db = sqlite3.connect(path)
+    db.execute("CREATE TABLE objects (project TEXT, object_id TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sequence))")
+    envelope = {"object_id": "legacy", "project_id": "project", "sender_device": "device", "sequence": 1, "base_digest": None, "nonce": "n", "ciphertext": "c", "key_id": "k", "signature": "s", "created_at": "now", "schema": "agentterm.sync.v1"}
+    db.execute("INSERT INTO objects VALUES(?,?,?,?,?)", ("project", "legacy", 1, json.dumps(envelope), "digest")); db.commit(); db.close()
+    registry = TrustRegistry(); server = LocalSyncServer(path, registry=registry)
+    columns = {row[1] for row in server.db.execute("PRAGMA table_info(objects)")}; assert "sender_device" in columns
+    assert server.db.execute("SELECT COUNT(*) FROM objects").fetchone()[0] == 1; server.close()
+
+
+def test_team_seat_entitlement_is_enforced_and_released():
+    registry = TrustRegistry(); alice, _ = create_device("org", "ws", "p", "alice", registry=registry); bob, _ = create_device("org", "ws", "p", "bob", registry=registry); cara, _ = create_device("org", "ws", "p", "cara", registry=registry)
+    billing = EntitlementService(); billing.subscribe("org", "free"); team = TeamService(billing); team.create_workspace("org", "ws", alice.principal)
+    team.accept(team.invite(alice.principal, "bob", "viewer"), bob.principal)
+    with pytest.raises(AuthorizationDenied): team.accept(team.invite(alice.principal, "cara", "viewer"), cara.principal)
+    team.revoke(alice.principal, "bob")
+    team.accept(team.invite(alice.principal, "cara", "viewer"), cara.principal)

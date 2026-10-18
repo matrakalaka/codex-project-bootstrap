@@ -2,10 +2,11 @@
 
 ## Local results
 
-- AgentTerm tests: **111 PASS**.
-- Strict `ResourceWarning`: **111 PASS**.
+- AgentTerm tests: **114 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- Strict `ResourceWarning`: **114 PASS**, **1 SKIP** for sandbox-denied loopback bind.
 - Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
 - AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
+- Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.
 - Compilation: **PASS**.
 - `git diff --check`: **PASS**.
 - CLI integration: `platform-demo` completed signed encrypted sync, conflict

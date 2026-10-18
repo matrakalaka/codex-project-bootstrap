@@ -17,6 +17,11 @@ import sqlite3
 import subprocess
 import time
 import uuid
+import threading
+import urllib.error
+import urllib.parse
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Iterable
@@ -201,15 +206,40 @@ class LocalSyncServer:
     """Opaque local service: SQLite stores ciphertext only, never plaintext."""
     protocol_version = "agentterm.sync.v1"
     max_envelope_bytes = 1 << 20
-    def __init__(self, path: Path | str, *, registry: TrustRegistry):
-        self.path = Path(path); self.registry = registry
-        self.db = sqlite3.connect(str(self.path)); self.db.execute("CREATE TABLE IF NOT EXISTS objects (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
+    def __init__(self, path: Path | str, *, registry: TrustRegistry, rate_limit: int = 100):
+        self.path = Path(path); self.registry = registry; self.rate_limit = rate_limit; self._upload_times: list[float] = []; self.db = sqlite3.connect(str(self.path)); self._initialize_schema()
+    def _initialize_schema(self) -> None:
+        self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        columns = {row[1] for row in self.db.execute("PRAGMA table_info(objects)")}
+        if columns and "sender_device" not in columns:
+            self.db.execute("BEGIN")
+            try:
+                self.db.execute("CREATE TABLE objects_v2 (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
+                for project, object_id, sequence, raw, digest in self.db.execute("SELECT project,object_id,sequence,envelope,digest FROM objects"):
+                    sender = json.loads(raw)["sender_device"]; self.db.execute("INSERT INTO objects_v2 VALUES(?,?,?,?,?,?)", (project, object_id, sender, sequence, raw, digest))
+                self.db.execute("ALTER TABLE objects RENAME TO objects_legacy"); self.db.execute("ALTER TABLE objects_v2 RENAME TO objects"); self.db.execute("DROP TABLE objects_legacy"); self.db.execute("INSERT OR REPLACE INTO meta VALUES('schema_version','2')"); self.db.commit()
+            except Exception:
+                self.db.rollback(); raise
+        else:
+            self.db.execute("CREATE TABLE IF NOT EXISTS objects (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES('schema_version','2')")
         self.db.execute("CREATE TABLE IF NOT EXISTS sequences (device TEXT, project TEXT, sequence INTEGER, digest TEXT, PRIMARY KEY(device, project, sequence))")
         self.db.execute("CREATE TABLE IF NOT EXISTS cursors (device TEXT, project TEXT, sequence INTEGER, PRIMARY KEY(device, project))"); self.db.commit()
     def close(self): self.db.close()
+    @staticmethod
+    def quarantine_corrupt(path: Path | str) -> Path:
+        """Move a corrupt local database aside without deleting it."""
+        source = Path(path)
+        if not source.exists(): raise PlatformError("sync database does not exist")
+        target = source.with_name(source.name + ".corrupt-" + uuid.uuid4().hex)
+        os.replace(source, target)
+        return target
     def negotiate(self, version: str) -> bool:
         return version == self.protocol_version
     def upload(self, envelope: SyncEnvelope) -> None:
+        now = time.monotonic(); self._upload_times = [point for point in self._upload_times if now - point < 60]
+        if len(self._upload_times) >= self.rate_limit: raise PlatformError("sync rate limit exceeded")
+        self._upload_times.append(now)
         if envelope.schema != self.protocol_version or envelope.sequence < 0: raise PlatformError("invalid sync envelope")
         if len(canonical_bytes(asdict(envelope))) > self.max_envelope_bytes: raise PlatformError("sync envelope exceeds size limit")
         device = self.registry.get(envelope.key_id)
@@ -278,11 +308,69 @@ class OfflineQueue:
         self.db.commit(); return sent, failed
 
 
+class LoopbackSyncService:
+    """Development HTTP transport; loopback-only and explicitly not production TLS."""
+    def __init__(self, server: LocalSyncServer, *, token: str | None = None, max_body: int = 1 << 20):
+        self.server, self.token, self.max_body = server, token or secrets.token_urlsafe(32), max_body
+        service = self
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *_args): pass
+            def _auth(self) -> bool:
+                return self.headers.get("Authorization") == "Bearer " + service.token
+            def _reply(self, code: int, body: dict[str, Any]):
+                raw = json.dumps(body, sort_keys=True).encode(); self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+            def do_POST(self):
+                if not self._auth(): return self._reply(401, {"error": "unauthorized"})
+                if self.path != "/v1/upload": return self._reply(404, {"error": "not found"})
+                length = int(self.headers.get("Content-Length", "-1"))
+                if length < 0 or length > service.max_body: return self._reply(413, {"error": "payload too large"})
+                try:
+                    envelope = SyncEnvelope(**json.loads(self.rfile.read(length))); service.server.upload(envelope); self._reply(200, {"ok": True})
+                except ConflictError as exc: self._reply(409, {"error": str(exc)})
+                except Exception as exc: self._reply(400, {"error": str(exc)[:200]})
+            def do_GET(self):
+                if not self._auth(): return self._reply(401, {"error": "unauthorized"})
+                parsed = urllib.parse.urlparse(self.path)
+                if parsed.path != "/v1/pull": return self._reply(404, {"error": "not found"})
+                query = urllib.parse.parse_qs(parsed.query); project = query.get("project", [""])[0]; after = int(query.get("after", ["0"])[0])
+                try:
+                    envelopes = service.server.pull_for_device(query.get("device", [""])[0], project, after); self._reply(200, {"envelopes": [asdict(item) for item in envelopes]})
+                except Exception as exc: self._reply(400, {"error": str(exc)[:200]})
+        self.http = ThreadingHTTPServer(("127.0.0.1", 0), Handler); self.thread: threading.Thread | None = None
+    @property
+    def address(self) -> tuple[str, int]: return self.http.server_address
+    def start(self) -> None:
+        self.thread = threading.Thread(target=self.http.serve_forever, daemon=True); self.thread.start()
+    def close(self) -> None: self.http.shutdown(); self.http.server_close(); self.thread and self.thread.join(timeout=2)
+
+
+def _server_pull_for_device(server: LocalSyncServer, device_id: str, project: str, after: int) -> list[SyncEnvelope]:
+    for key in server.registry._keys.values():
+        if key.owner.device_id == device_id:
+            device = Device(device_id, key.owner, key.key_id, key.public_key); return server.pull(device, project, after)
+    raise AuthorizationDenied("unknown device")
+
+
+LocalSyncServer.pull_for_device = _server_pull_for_device  # type: ignore[attr-defined]
+
+
+class LoopbackSyncTransport:
+    def __init__(self, service: LoopbackSyncService): self.service, self.token = service, service.token
+    def _request(self, method: str, path: str, payload: bytes | None = None) -> dict[str, Any]:
+        host, port = self.service.address; request = urllib.request.Request(f"http://{host}:{port}{path}", data=payload, method=method, headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response: return json.loads(response.read())
+        except urllib.error.HTTPError as exc: raise PlatformError(exc.read().decode(errors="replace")) from exc
+    def upload(self, envelope: SyncEnvelope) -> None: self._request("POST", "/v1/upload", canonical_bytes(asdict(envelope)))
+    def pull(self, device: Device, project: str, after: int = 0) -> list[SyncEnvelope]:
+        query = urllib.parse.urlencode({"device": device.device_id, "project": project, "after": after}); return [SyncEnvelope(**item) for item in self._request("GET", "/v1/pull?" + query)["envelopes"]]
+
+
 ROLE_PERMISSIONS = {"owner": {"read", "write", "invite", "admin"}, "editor": {"read", "write"}, "viewer": {"read"}}
 
 
 class TeamService:
-    def __init__(self): self.orgs: dict[str, dict[str, Any]] = {}; self.invitations: dict[str, dict[str, Any]] = {}; self.audit: list[dict[str, Any]] = []
+    def __init__(self, entitlements: "EntitlementService | None" = None): self.orgs: dict[str, dict[str, Any]] = {}; self.invitations: dict[str, dict[str, Any]] = {}; self.audit: list[dict[str, Any]] = []; self.entitlements = entitlements
     def create_workspace(self, org: str, workspace: str, owner: Principal) -> None:
         if owner.organization_id != org or owner.workspace_id != workspace: raise AuthorizationDenied("tenant binding failed")
         self.orgs.setdefault(org, {"workspaces": {}})["workspaces"][workspace] = {owner.user_id: "owner"}
@@ -300,12 +388,15 @@ class TeamService:
             raise AuthorizationDenied("invalid, expired, or misbound invitation")
         members = self.orgs.get(actor.organization_id, {}).get("workspaces", {}).get(actor.workspace_id)
         if members is None: raise AuthorizationDenied("unknown tenant")
+        if self.entitlements and not self.entitlements.permit(actor.organization_id, "seats"):
+            raise AuthorizationDenied("seat entitlement exhausted")
         members[actor.user_id] = invite["role"]; self.audit.append({"op": "invite.accept", "actor": actor.user_id, "role": invite["role"]})
     def authorize(self, actor: Principal, operation: str) -> None:
         members = self.orgs.get(actor.organization_id, {}).get("workspaces", {}).get(actor.workspace_id, {})
         if operation not in ROLE_PERMISSIONS.get(members.get(actor.user_id), set()): raise AuthorizationDenied("team operation denied")
     def revoke(self, actor: Principal, user_id: str) -> None:
         self.authorize(actor, "admin"); members = self.orgs[actor.organization_id]["workspaces"][actor.workspace_id]; members.pop(user_id, None)
+        if self.entitlements: self.entitlements.release(actor.organization_id, "seats")
         self.audit.append({"op": "member.revoke", "actor": actor.user_id, "target": user_id})
 
 
@@ -334,6 +425,8 @@ class EntitlementService:
         limit = plan.get(feature, 0); used = self.usage.get((org, feature), 0)
         if used + amount > limit: return False
         self.usage[(org, feature)] = used + amount; return True
+    def release(self, org: str, feature: str, amount: int = 1) -> None:
+        key = (org, feature); self.usage[key] = max(0, self.usage.get(key, 0) - amount)
     def status(self, org: str) -> dict[str, Any]:
         sub = self.subscriptions.get(org, {"plan": "free", "state": "inactive"})
         return redact_obj({"subscription": sub, "usage": {k[1]: v for k, v in self.usage.items() if k[0] == org}})
