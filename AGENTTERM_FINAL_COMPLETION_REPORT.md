@@ -32,7 +32,8 @@ schema version.
 
 ## Qualification evidence
 
-- AgentTerm strict suite: 124 passed, 1 loopback-bind skip.
+- AgentTerm strict suite: 124 passed, 2 loopback-bind skips (including the
+  staging acceptance test).
 - Bootstrap/security/continuity suite: 101 passed, 4 AF_UNIX skips.
 - Combined host-targeted command in sandbox: 23 passed, 5 explicit skips.
 - Compilation, wheel packaging, CLI smoke, health inspection, and Git diff

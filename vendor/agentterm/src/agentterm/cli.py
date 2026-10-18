@@ -399,6 +399,14 @@ def cmd_platform_health(args: argparse.Namespace) -> int:
     return 0 if health["ok"] else 1
 
 
+def cmd_staging_acceptance(args: argparse.Namespace) -> int:
+    import tempfile
+    root = Path(args.root) if args.root else Path(tempfile.mkdtemp(prefix="agentterm-staging-"))
+    try: result = platform.integrated_staging_flow(root)
+    except PermissionError as exc: raise Fail("staging loopback bind unavailable on this host; run the host qualification command") from exc
+    print(json.dumps(result, sort_keys=True)); print(f"staging evidence: {root}"); return 0 if all(result.values()) else 1
+
+
 # --------------------------------------------------------------------- parser
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentterm", description="Install, run and remember for AI coding agents. No compaction: the terminal owns the memory.")
@@ -501,6 +509,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--root", help="local evidence directory (default: temporary directory)")
     sp = add("platform-health", cmd_platform_health, "check a local sync database integrity and schema")
     sp.add_argument("root", help="platform evidence directory containing sync.db")
+    sp = add("staging-acceptance", cmd_staging_acceptance, "run the isolated local HTTP staging acceptance")
+    sp.add_argument("--root", help="staging evidence directory (default: temporary directory)")
     return p
 
 

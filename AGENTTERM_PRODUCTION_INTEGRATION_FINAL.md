@@ -43,10 +43,14 @@ restart recovery, disposable Git merge, and unknown-state blocking.
 
 ## Qualification
 
-- AgentTerm strict suite: 124 passed, 1 sandbox loopback skip.
+- AgentTerm strict suite: 124 passed, 2 sandbox loopback skips.
+- Staging acceptance test: sandbox-blocked/skipped because loopback bind is
+  denied; host execution is provided by `scripts/qualify_agentterm_host.sh`.
 - Repository regression: 101 passed, 4 AF_UNIX sandbox skips.
 - Owner normal-host targeted qualification: 30 passed, 0 skipped, 0 failed.
 - Compilation, wheel packaging, CLI acceptance, and diff checks: passed.
+- `scripts/qualify_agentterm_host.sh` provides one-command normal-host
+  qualification for the targeted tests and staging acceptance.
 
 ## External gates
 

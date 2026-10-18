@@ -382,6 +382,7 @@ class LoopbackSyncService:
     """Development HTTP transport; loopback-only and explicitly not production TLS."""
     def __init__(self, server: LocalSyncServer, *, token: str | None = None, max_body: int = 1 << 20):
         self.server, self.token, self.max_body = server, token or secrets.token_urlsafe(32), max_body
+        self._lifecycle_lock = threading.Lock()
         service = self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *_args): pass
@@ -402,8 +403,12 @@ class LoopbackSyncService:
                 except AuthorizationDenied as exc: self._reply(403, {"error": str(exc)[:200], "code": "authorization_denied"})
                 except Exception as exc: self._reply(400, {"error": str(exc)[:200], "code": "invalid_request"})
             def do_GET(self):
-                if not self._auth(): return self._reply(401, {"error": "unauthorized"})
                 parsed = urllib.parse.urlparse(self.path)
+                if parsed.path == "/healthz": return self._reply(200, {"ok": service.server.health()["ok"], "protocol": service.server.protocol_version})
+                if parsed.path == "/readyz":
+                    try: service.server.health(); return self._reply(200, {"ok": True})
+                    except Exception: return self._reply(503, {"ok": False, "code": "not_ready"})
+                if not self._auth(): return self._reply(401, {"error": "unauthorized"})
                 if parsed.path != "/v1/pull": return self._reply(404, {"error": "not found"})
                 try:
                     query = urllib.parse.parse_qs(parsed.query); project = query.get("project", [""])[0]; after = int(query.get("after", ["0"])[0])
@@ -414,8 +419,14 @@ class LoopbackSyncService:
     @property
     def address(self) -> tuple[str, int]: return self.http.server_address
     def start(self) -> None:
-        self.thread = threading.Thread(target=self.http.serve_forever, daemon=True); self.thread.start()
-    def close(self) -> None: self.http.shutdown(); self.http.server_close(); self.thread and self.thread.join(timeout=2)
+        with self._lifecycle_lock:
+            if self.thread and self.thread.is_alive(): return
+            self.thread = threading.Thread(target=self.http.serve_forever, daemon=True); self.thread.start()
+    def close(self) -> None:
+        with self._lifecycle_lock:
+            thread = self.thread
+            if not thread: self.http.server_close(); return
+            self.http.shutdown(); self.http.server_close(); thread.join(timeout=2); self.thread = None
 
 
 def _server_pull_for_device(server: LocalSyncServer, device_id: str, project: str, after: int) -> list[SyncEnvelope]:
@@ -551,3 +562,27 @@ def integrated_local_flow(root: Path | str) -> dict[str, Any]:
     merge_grant = Grant(first.principal, "worktree.merge", record.worktree_id); worktrees.merge(worktrees.approve(record.worktree_id, operation="merge", actor=first.principal, grants=[merge_grant], target_ref="main"))
     (worktrees.worktrees_root / "interrupted-unknown").mkdir(); recovery = worktrees.recover()
     return {"devices": 2, "encrypted_sync": True, "team_revocation": True, "entitlement_enforced": allowed, "conflict_detected": conflict_detected, "worktree_merged": True, "recovery_blocked_unknown": any(item.state.value == "BLOCKED" for item in recovery), "audit_events": len(team.audit) + len(billing.audit), "backup_created": backup.exists(), "queue_recovered": queued_result == (1, 0), "restart_replay_idempotent": health_before["ok"] and health_after["ok"], "ciphertext": envelope.ciphertext}
+
+
+def integrated_staging_flow(root: Path | str) -> dict[str, Any]:
+    """Exercise the actual local HTTP service with synthetic external providers."""
+    from .integration import BillingWebhookVerifier, OIDCValidator
+    root = Path(root); root.mkdir(parents=True, exist_ok=True)
+    registry = TrustRegistry(); alice, private = create_device("org", "workspace", "project", "alice", registry=registry); bob, _ = create_device("org", "workspace", "project", "bob", registry=registry)
+    server = LocalSyncServer(root / "sync.db", registry=registry); service = LoopbackSyncService(server); service.start(); restarted = None
+    try:
+        transport = LoopbackSyncTransport(service); client = SyncClient(alice, private, b"s" * 32, transport)
+        first = client.publish("staging", b"staging", sequence=1)
+        for sequence in range(2, 6): client.publish("staging-" + str(sequence), b"concurrent", sequence=sequence)
+        pulled = transport.pull(bob, "project")
+        claims = {"iss": "https://synthetic.example", "aud": "agentterm", "sub": "alice", "exp": time.time() + 60, "organization_id": "org", "workspace_id": "workspace", "project_id": "project"}
+        principal = OIDCValidator(issuer="https://synthetic.example", audience="agentterm").validate(claims)
+        billing_private, billing_public = CryptoProvider.signing_key(); event = {"id": "staging-event", "issued_at": time.time(), "organization": "org", "event": "subscription.updated"}
+        verifier = BillingWebhookVerifier(billing_public); verified_event = verifier.verify(event, CryptoProvider.sign(billing_private, canonical_bytes(event)))
+        health = urllib.request.urlopen("http://%s:%s/healthz" % service.address, timeout=5).read()
+        backup = server.backup(root / "staging-backup.db"); service.close(); server.close(); restarted = LocalSyncServer(backup, registry=registry)
+        restart_health = restarted.health()
+        return {"http_health": json.loads(health)["ok"], "objects": len(pulled), "signed_sync": first.project_id == principal.project_id, "oidc_tenant": principal.organization_id == "org", "billing_webhook": verified_event["id"] == "staging-event", "backup_restored": backup.exists() and restart_health["ok"], "server_restart_safe": restart_health["objects"] == 5}
+    finally:
+        service.close(); server.close()
+        if restarted: restarted.close()

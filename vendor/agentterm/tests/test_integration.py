@@ -2,7 +2,7 @@ import pytest
 
 from agentterm.canon import canonical_bytes
 from agentterm.integration import BillingWebhookVerifier, HttpsSyncTransport, IntegrationError, OIDCValidator, RuntimeConfig
-from agentterm.platform import CryptoProvider
+from agentterm.platform import CryptoProvider, integrated_staging_flow
 
 
 def test_runtime_config_fails_closed_for_production_mutation_and_http():
@@ -42,3 +42,11 @@ def test_https_transport_rejects_plaintext_and_missing_credentials():
     with pytest.raises(IntegrationError): HttpsSyncTransport("http://sync", "token")
     with pytest.raises(IntegrationError): HttpsSyncTransport("https://sync", "")
     with pytest.raises(IntegrationError): HttpsSyncTransport("https://sync", "token", max_body=0)
+
+
+def test_staging_acceptance_uses_real_loopback_service(tmp_path):
+    try:
+        result = integrated_staging_flow(tmp_path)
+    except PermissionError:
+        pytest.skip("host sandbox denies loopback bind; staging requires normal host")
+    assert all(result.values()) and result["objects"] == 5
