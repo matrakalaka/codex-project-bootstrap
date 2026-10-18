@@ -5,7 +5,7 @@ Status: **PARTIAL — ready for independent review; not published or activated i
 ## Baseline and ancestry
 
 This release candidate is branch `release-candidate/agentterm-bootstrap-20261018`,
-based on the verified AgentTerm-core commit
+final local commit `5633e59`, based on the verified AgentTerm-core commit
 `be9b844bfdaa89f4c695583726b72121a2621e95`. Its ancestry includes the four-tool
 work (`8254316`, `dced2c2`, `f3c3ea4`, `475e747`) and AgentTerm source work
 (`43e35b5`, `274dd7d`). Existing `main` and all prior worktrees were preserved.
