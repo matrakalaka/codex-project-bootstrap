@@ -1,6 +1,7 @@
 import json
 import sqlite3
 from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -129,10 +130,29 @@ def test_loopback_transport_is_authenticated_and_bounded(tmp_path):
         transport = LoopbackSyncTransport(service); client = SyncClient(alice, private, key, transport)
         envelope = client.publish("http", b"loopback", sequence=1)
         assert SyncClient(bob, private, key, server).consume(transport.pull(bob, "project")[0]) == b"loopback"
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            list(pool.map(lambda sequence: client.publish("parallel-" + str(sequence), b"parallel", sequence=sequence), range(2, 6)))
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            pulls = list(pool.map(lambda _: len(transport.pull(bob, "project")), range(4)))
+        assert pulls == [5, 5, 5, 5]
         service.token = "wrong"
         with pytest.raises(PlatformError): transport.upload(envelope)
     finally:
         service.close(); server.close()
+
+
+def test_per_operation_connections_support_concurrent_storage_access(tmp_path):
+    registry, _, _, bob, _, server, key = setup_platform(tmp_path)
+    devices = [create_device("org", "workspace", "project", f"sender-{index}", registry=registry) for index in range(8)]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda item: SyncClient(item[0], item[1], key, server).publish("direct-" + item[0].principal.user_id, b"data", sequence=1), devices))
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        counts = list(pool.map(lambda _: len(server.pull(bob, "project")), range(8)))
+    assert counts == [8] * 8
+    server.close()
+    with pytest.raises(PlatformError):
+        with server.connection():
+            pass
 
 
 def test_corrupt_database_is_quarantined_not_deleted(tmp_path):
@@ -147,8 +167,10 @@ def test_sync_schema_migrates_legacy_objects_transactionally(tmp_path):
     envelope = {"object_id": "legacy", "project_id": "project", "sender_device": "device", "sequence": 1, "base_digest": None, "nonce": "n", "ciphertext": "c", "key_id": "k", "signature": "s", "created_at": "now", "schema": "agentterm.sync.v1"}
     db.execute("INSERT INTO objects VALUES(?,?,?,?,?)", ("project", "legacy", 1, json.dumps(envelope), "digest")); db.commit(); db.close()
     registry = TrustRegistry(); server = LocalSyncServer(path, registry=registry)
-    columns = {row[1] for row in server.db.execute("PRAGMA table_info(objects)")}; assert "sender_device" in columns
-    assert server.db.execute("SELECT COUNT(*) FROM objects").fetchone()[0] == 1; server.close()
+    with server.connection() as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(objects)")}; assert "sender_device" in columns
+        assert connection.execute("SELECT COUNT(*) FROM objects").fetchone()[0] == 1
+    server.close()
 
 
 def test_team_seat_entitlement_is_enforced_and_released():

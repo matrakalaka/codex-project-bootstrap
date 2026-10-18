@@ -18,6 +18,7 @@ import subprocess
 import time
 import uuid
 import threading
+import contextlib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -207,25 +208,38 @@ class LocalSyncServer:
     protocol_version = "agentterm.sync.v1"
     max_envelope_bytes = 1 << 20
     def __init__(self, path: Path | str, *, registry: TrustRegistry, rate_limit: int = 100):
-        self.path = Path(path); self.registry = registry; self.rate_limit = rate_limit; self._upload_times: list[float] = []; self.db = sqlite3.connect(str(self.path)); self._initialize_schema()
+        self.path = Path(path); self.registry = registry; self.rate_limit = rate_limit; self._upload_times: list[float] = []; self._rate_lock = threading.Lock(); self._closed = False; self._initialize_schema()
+    def _connect(self) -> sqlite3.Connection:
+        if self._closed: raise PlatformError("sync server is closed")
+        connection = sqlite3.connect(str(self.path), timeout=30, isolation_level=None)
+        connection.execute("PRAGMA busy_timeout=30000"); connection.execute("PRAGMA journal_mode=WAL"); return connection
+    @contextlib.contextmanager
+    def connection(self):
+        """Yield a short-lived connection owned exclusively by this caller."""
+        connection = self._connect()
+        try: yield connection
+        finally: connection.close()
     def _initialize_schema(self) -> None:
-        self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
-        columns = {row[1] for row in self.db.execute("PRAGMA table_info(objects)")}
+        with self.connection() as db:
+            self._initialize_schema_on(db)
+    def _initialize_schema_on(self, db: sqlite3.Connection) -> None:
+        db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(objects)")}
         if columns and "sender_device" not in columns:
-            self.db.execute("BEGIN")
+            db.execute("BEGIN IMMEDIATE")
             try:
-                self.db.execute("CREATE TABLE objects_v2 (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
-                for project, object_id, sequence, raw, digest in self.db.execute("SELECT project,object_id,sequence,envelope,digest FROM objects"):
-                    sender = json.loads(raw)["sender_device"]; self.db.execute("INSERT INTO objects_v2 VALUES(?,?,?,?,?,?)", (project, object_id, sender, sequence, raw, digest))
-                self.db.execute("ALTER TABLE objects RENAME TO objects_legacy"); self.db.execute("ALTER TABLE objects_v2 RENAME TO objects"); self.db.execute("DROP TABLE objects_legacy"); self.db.execute("INSERT OR REPLACE INTO meta VALUES('schema_version','2')"); self.db.commit()
+                db.execute("CREATE TABLE objects_v2 (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
+                for project, object_id, sequence, raw, digest in db.execute("SELECT project,object_id,sequence,envelope,digest FROM objects"):
+                    sender = json.loads(raw)["sender_device"]; db.execute("INSERT INTO objects_v2 VALUES(?,?,?,?,?,?)", (project, object_id, sender, sequence, raw, digest))
+                db.execute("ALTER TABLE objects RENAME TO objects_legacy"); db.execute("ALTER TABLE objects_v2 RENAME TO objects"); db.execute("DROP TABLE objects_legacy"); db.execute("INSERT OR REPLACE INTO meta VALUES('schema_version','2')"); db.commit()
             except Exception:
-                self.db.rollback(); raise
+                db.rollback(); raise
         else:
-            self.db.execute("CREATE TABLE IF NOT EXISTS objects (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
-            self.db.execute("INSERT OR REPLACE INTO meta VALUES('schema_version','2')")
-        self.db.execute("CREATE TABLE IF NOT EXISTS sequences (device TEXT, project TEXT, sequence INTEGER, digest TEXT, PRIMARY KEY(device, project, sequence))")
-        self.db.execute("CREATE TABLE IF NOT EXISTS cursors (device TEXT, project TEXT, sequence INTEGER, PRIMARY KEY(device, project))"); self.db.commit()
-    def close(self): self.db.close()
+            db.execute("CREATE TABLE IF NOT EXISTS objects (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
+            db.execute("INSERT OR REPLACE INTO meta VALUES('schema_version','2')")
+        db.execute("CREATE TABLE IF NOT EXISTS sequences (device TEXT, project TEXT, sequence INTEGER, digest TEXT, PRIMARY KEY(device, project, sequence))")
+        db.execute("CREATE TABLE IF NOT EXISTS cursors (device TEXT, project TEXT, sequence INTEGER, PRIMARY KEY(device, project))"); db.commit()
+    def close(self): self._closed = True
     @staticmethod
     def quarantine_corrupt(path: Path | str) -> Path:
         """Move a corrupt local database aside without deleting it."""
@@ -237,38 +251,45 @@ class LocalSyncServer:
     def negotiate(self, version: str) -> bool:
         return version == self.protocol_version
     def upload(self, envelope: SyncEnvelope) -> None:
-        now = time.monotonic(); self._upload_times = [point for point in self._upload_times if now - point < 60]
-        if len(self._upload_times) >= self.rate_limit: raise PlatformError("sync rate limit exceeded")
-        self._upload_times.append(now)
+        now = time.monotonic()
+        with self._rate_lock:
+            self._upload_times = [point for point in self._upload_times if now - point < 60]
+            if len(self._upload_times) >= self.rate_limit: raise PlatformError("sync rate limit exceeded")
+            self._upload_times.append(now)
         if envelope.schema != self.protocol_version or envelope.sequence < 0: raise PlatformError("invalid sync envelope")
         if len(canonical_bytes(asdict(envelope))) > self.max_envelope_bytes: raise PlatformError("sync envelope exceeds size limit")
         device = self.registry.get(envelope.key_id)
         if device.owner.device_id != envelope.sender_device or device.owner.project_id != envelope.project_id: raise PlatformError("sender/project binding failed")
         if not CryptoProvider.verify(_unb64(device.public_key), envelope.signing_bytes(), _unb64(envelope.signature)): raise PlatformError("invalid sync signature")
-        existing = self.db.execute("SELECT digest FROM objects WHERE project=? AND object_id=? AND sender_device=? AND sequence=?", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence)).fetchone()
-        if existing:
-            if existing[0] == envelope.digest(): return
-            raise ConflictError("sequence already contains a different envelope")
-        latest = self.db.execute("SELECT envelope, digest FROM objects WHERE project=? AND object_id=? ORDER BY rowid DESC LIMIT 1", (envelope.project_id, envelope.object_id)).fetchone()
-        if latest:
-            latest_envelope = json.loads(latest[0])
-            if envelope.base_digest != latest[1]:
-                raise ConflictError("object has diverged; resolve against the latest envelope")
-        raw = json.dumps(asdict(envelope), sort_keys=True)
-        prior = self.db.execute("SELECT MAX(sequence) FROM sequences WHERE device=? AND project=?", (envelope.sender_device, envelope.project_id)).fetchone()[0]
-        if prior is not None and envelope.sequence <= prior:
-            raise PlatformError("replayed or non-increasing device sequence")
-        self.db.execute("INSERT INTO sequences VALUES(?,?,?,?)", (envelope.sender_device, envelope.project_id, envelope.sequence, envelope.digest()))
-        self.db.execute("INSERT INTO objects VALUES(?,?,?,?,?,?)", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence, raw, envelope.digest()))
-        self.db.commit()
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                existing = db.execute("SELECT digest FROM objects WHERE project=? AND object_id=? AND sender_device=? AND sequence=?", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence)).fetchone()
+                if existing:
+                    if existing[0] == envelope.digest(): db.commit(); return
+                    raise ConflictError("sequence already contains a different envelope")
+                latest = db.execute("SELECT envelope, digest FROM objects WHERE project=? AND object_id=? ORDER BY rowid DESC LIMIT 1", (envelope.project_id, envelope.object_id)).fetchone()
+                if latest and envelope.base_digest != latest[1]: raise ConflictError("object has diverged; resolve against the latest envelope")
+                raw = json.dumps(asdict(envelope), sort_keys=True)
+                prior = db.execute("SELECT MAX(sequence) FROM sequences WHERE device=? AND project=?", (envelope.sender_device, envelope.project_id)).fetchone()[0]
+                if prior is not None and envelope.sequence <= prior: raise PlatformError("replayed or non-increasing device sequence")
+                db.execute("INSERT INTO sequences VALUES(?,?,?,?)", (envelope.sender_device, envelope.project_id, envelope.sequence, envelope.digest()))
+                db.execute("INSERT INTO objects VALUES(?,?,?,?,?,?)", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence, raw, envelope.digest())); db.commit()
+            except Exception:
+                db.rollback(); raise
     def pull(self, device: Device, project: str, after: int = 0) -> list[SyncEnvelope]:
         if device.principal.project_id != project: raise AuthorizationDenied("cross-project sync denied")
-        rows = self.db.execute("SELECT envelope FROM objects WHERE project=? AND sequence>? ORDER BY sequence", (project, after)).fetchall()
+        with self.connection() as db: rows = db.execute("SELECT envelope FROM objects WHERE project=? AND sequence>? ORDER BY sequence", (project, after)).fetchall()
         return [SyncEnvelope(**json.loads(row[0])) for row in rows]
     def advance_cursor(self, device: Device, project: str, sequence: int) -> None:
-        old = self.db.execute("SELECT sequence FROM cursors WHERE device=? AND project=?", (device.device_id, project)).fetchone()
-        if old and sequence < old[0]: raise PlatformError("cursor rollback")
-        self.db.execute("INSERT OR REPLACE INTO cursors VALUES(?,?,?)", (device.device_id, project, sequence)); self.db.commit()
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                old = db.execute("SELECT sequence FROM cursors WHERE device=? AND project=?", (device.device_id, project)).fetchone()
+                if old and sequence < old[0]: raise PlatformError("cursor rollback")
+                db.execute("INSERT OR REPLACE INTO cursors VALUES(?,?,?)", (device.device_id, project, sequence)); db.commit()
+            except Exception:
+                db.rollback(); raise
 
 
 class SyncClient:
@@ -290,22 +311,32 @@ class SyncClient:
 class OfflineQueue:
     """Durable, bounded retry queue for a transport implementing ``upload``."""
     def __init__(self, path: Path | str, *, max_items: int = 1000):
-        self.path, self.max_items = Path(path), max_items; self.db = sqlite3.connect(str(self.path))
-        self.db.execute("CREATE TABLE IF NOT EXISTS queue (id TEXT PRIMARY KEY, envelope TEXT NOT NULL, attempts INTEGER NOT NULL, next_at REAL NOT NULL)"); self.db.commit()
-    def close(self): self.db.close()
+        self.path, self.max_items, self._closed = Path(path), max_items, False
+        with self.connection() as db: db.execute("CREATE TABLE IF NOT EXISTS queue (id TEXT PRIMARY KEY, envelope TEXT NOT NULL, attempts INTEGER NOT NULL, next_at REAL NOT NULL)"); db.commit()
+    def _connect(self) -> sqlite3.Connection:
+        if self._closed: raise PlatformError("offline queue is closed")
+        connection = sqlite3.connect(str(self.path), timeout=30, isolation_level=None); connection.execute("PRAGMA busy_timeout=30000"); connection.execute("PRAGMA journal_mode=WAL"); return connection
+    @contextlib.contextmanager
+    def connection(self):
+        db = self._connect()
+        try: yield db
+        finally: db.close()
+    def close(self): self._closed = True
     def enqueue(self, envelope: SyncEnvelope) -> None:
-        if self.db.execute("SELECT COUNT(*) FROM queue").fetchone()[0] >= self.max_items: raise PlatformError("offline queue is full")
-        queue_id = ":".join((envelope.project_id, envelope.sender_device, envelope.object_id, str(envelope.sequence)))
-        self.db.execute("INSERT OR IGNORE INTO queue VALUES(?,?,?,?)", (queue_id, json.dumps(asdict(envelope), sort_keys=True), 0, 0.0)); self.db.commit()
+        with self.connection() as db:
+            if db.execute("SELECT COUNT(*) FROM queue").fetchone()[0] >= self.max_items: raise PlatformError("offline queue is full")
+            queue_id = ":".join((envelope.project_id, envelope.sender_device, envelope.object_id, str(envelope.sequence)))
+            db.execute("INSERT OR IGNORE INTO queue VALUES(?,?,?,?)", (queue_id, json.dumps(asdict(envelope), sort_keys=True), 0, 0.0)); db.commit()
     def flush(self, transport: Any, *, now: float | None = None, limit: int = 100) -> tuple[int, int]:
         sent = failed = 0; point = time.time() if now is None else now
-        rows = self.db.execute("SELECT id,envelope,attempts FROM queue WHERE next_at<=? ORDER BY id LIMIT ?", (point, limit)).fetchall()
-        for item_id, raw, attempts in rows:
-            try:
-                transport.upload(SyncEnvelope(**json.loads(raw))); self.db.execute("DELETE FROM queue WHERE id=?", (item_id,)); sent += 1
-            except Exception:
-                attempts += 1; self.db.execute("UPDATE queue SET attempts=?,next_at=? WHERE id=?", (attempts, point + min(300, 2 ** min(attempts, 8)), item_id)); failed += 1
-        self.db.commit(); return sent, failed
+        with self.connection() as db:
+            rows = db.execute("SELECT id,envelope,attempts FROM queue WHERE next_at<=? ORDER BY id LIMIT ?", (point, limit)).fetchall()
+            for item_id, raw, attempts in rows:
+                try:
+                    transport.upload(SyncEnvelope(**json.loads(raw))); db.execute("DELETE FROM queue WHERE id=?", (item_id,)); sent += 1
+                except Exception:
+                    attempts += 1; db.execute("UPDATE queue SET attempts=?,next_at=? WHERE id=?", (attempts, point + min(300, 2 ** min(attempts, 8)), item_id)); failed += 1
+            db.commit(); return sent, failed
 
 
 class LoopbackSyncService:

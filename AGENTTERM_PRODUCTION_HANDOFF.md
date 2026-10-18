@@ -21,3 +21,14 @@ revocation, entitlements, conflict detection, and conservative recovery.
 
 No publication, deployment, live billing, protected-repository mutation, or
 launcher activation is authorized by this handoff.
+
+## Required requalification after SQLite fix
+
+The previous normal-host failure was a cross-thread SQLite connection defect.
+It is fixed in the current source. Rerun the following on normal macOS with
+loopback permission before treating transport qualification as complete:
+
+```sh
+cd /Users/admin/codex-agentterm-phase1
+PYTHONPATH=vendor/agentterm/src /Users/admin/ic8-stack-qualification/.venv/bin/pytest -q scripts/test_open_terminal_bridge.py vendor/agentterm/tests/test_platform.py -rs
+```

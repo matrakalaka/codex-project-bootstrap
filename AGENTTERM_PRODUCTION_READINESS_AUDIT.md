@@ -27,6 +27,24 @@ sequences, durable offline retry queue, billing-event idempotency, real
 disposable worktree execution in the demo, and interrupted/unknown recovery
 evidence.
 
+## Host-discovered SQLite defect and correction
+
+Normal macOS qualification exposed `SQLite objects created in a thread can
+only be used in that same thread` during authenticated loopback upload. The
+root cause was `LocalSyncServer` storing one `self.db` connection created by
+the caller thread while `ThreadingHTTPServer` executed upload/download
+handlers on worker threads.
+
+`LocalSyncServer` now creates a short-lived connection per operation, enables
+WAL and a busy timeout on each connection, uses `BEGIN IMMEDIATE` with
+rollback-on-error for uploads and cursors, and closes every connection in a
+context manager. `OfflineQueue` uses the same ownership model. The server no
+longer exposes or shares a persistent SQLite connection. Rate-limit state is
+protected separately by a lock.
+
+The fix preserves schema migration, idempotency, replay protection, cursor
+monotonicity, tenant/device checks, and corruption quarantine.
+
 ## Conclusion
 
 The local implementation is suitable for independent review. It is not

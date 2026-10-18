@@ -30,3 +30,11 @@ provenance are covered by source and adversarial tests.
 - What retention, tenant, billing, and incident-response controls are required?
 
 Codex self-review and local tests do not constitute independent approval.
+
+## Corrective security evidence
+
+The host-discovered cross-thread SQLite defect was corrected by removing the
+shared server connection. Upload, pull, cursor, migration, and queue operations
+now own short-lived connections and close them deterministically. Concurrent
+direct storage tests pass; the actual HTTP-thread test remains host-dependent
+and must be rerun on normal macOS.

@@ -19,3 +19,7 @@ production offline queue delivery.
 `127.0.0.1` with an ephemeral port. It is suitable only for development
 qualification; sandbox bind restrictions may prevent its test from running.
 It must not be exposed to a LAN or treated as production TLS.
+
+SQLite ownership: `LocalSyncServer` and `OfflineQueue` do not share a
+connection across requests or threads. Each operation opens and closes its
+own connection, with WAL, busy timeout, and explicit write transactions.
