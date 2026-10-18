@@ -16,8 +16,11 @@ paths, and `unzip -t` reported no errors. SHA-256:
 The archive does not identify an upstream repository. Bootstrap therefore
 records it as an owner-supplied local source and does not invent an upstream
 identity. The reviewed source is preserved under `vendor/agentterm/` and is
-pinned by the archive hash in `tooling/bootstrap_tools.json` and
-`tooling/agentterm.integration.json`.
+pinned to the archive baseline by the hash in `tooling/bootstrap_tools.json`
+and `tooling/agentterm.integration.json`. The tracked integration delta in
+`vendor/agentterm/src/agentterm/runner.py` only adds optional task and
+correlation ID propagation so a Bootstrap plan and execution share one
+contract identity; the original archive remains unchanged evidence.
 
 The package is `agentterm` version `0.1.0`, Python `>=3.11`, with no runtime
 dependencies. `pytest` is a development-only dependency. Installation is
@@ -37,6 +40,10 @@ reconstructed `tests/test_runner.py`, `pyproject.toml`, and package
 Bootstrap retains its own host bridge and discovery implementation as the
 canonical integration boundary. AgentTerm does not replace or broaden that
 bridge.
+
+The first-class lifecycle boundary is implemented in
+`scripts/agentterm_bootstrap.py` and `scripts/bootstrap_session.py`; see the
+core architecture and lifecycle contracts for ownership and migration details.
 
 ## Codex compatibility
 

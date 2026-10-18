@@ -2,6 +2,7 @@
   "schema_version": "bootstrap_agentterm_integration.v1",
   "source": "vendor/agentterm",
   "archive_sha256": "17b6784fe8a96e7667719131209fc44ecefd56010f69479ac1b6124690e5d500",
+  "integration_delta": "vendor/agentterm/src/agentterm/runner.py adds optional task_id and correlation_id propagation so Bootstrap plans and executions share one contract identity",
   "package": "agentterm",
   "version": "0.1.0",
   "installation": ".bootstrap-tools/install/agentterm-venv",

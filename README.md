@@ -20,6 +20,13 @@ Canonical bootstrap entry point: `GLOBAL_PROJECT_BOOTSTRAP.md`
 Optional tool discovery: `scripts/tool_discovery.py` and
 `BOOTSTRAP_TOOL_DISCOVERY_MATRIX.md`
 
+Approved project lifecycle integration: `scripts/bootstrap_session.py` and
+the AgentTerm architecture, lifecycle, memory, and verification contracts in
+`BOOTSTRAP_AGENTTERM_CORE_ARCHITECTURE.md`,
+`BOOTSTRAP_AGENTTERM_LIFECYCLE.md`,
+`BOOTSTRAP_AGENTTERM_MEMORY_CONTRACT.md`, and
+`BOOTSTRAP_AGENTTERM_END_TO_END_VERIFICATION.md`.
+
 When Codex is given this repository URL for use against another project:
 
 1. Use this GitHub repository as the canonical bootstrap source of truth and read `GLOBAL_PROJECT_BOOTSTRAP.md` first.
@@ -33,6 +40,10 @@ When Codex is given this repository URL for use against another project:
 Recommended short launcher instruction:
 
 > Initialize this project using the canonical bootstrap repository: https://github.com/matrakalaka/codex-project-bootstrap. Read and follow its `GLOBAL_PROJECT_BOOTSTRAP.md` as the canonical entry point. Resolve the target repository/root before broad discovery, start read-only, make no changes, and stop at the human-approval gate with the `PROJECT BOOTSTRAP ASSESSMENT`.
+
+After the approval gate, use the canonical AgentTerm-backed lifecycle entry
+point. It requires the verified authority resolver output and creates only
+project-local `.agentterm` state; it does not modify global Codex settings.
 
 ## Read-only authority resolution
 

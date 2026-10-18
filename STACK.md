@@ -26,6 +26,10 @@ superior.
 - Oxc — `OPTIONAL_JS_TS_TOOLCHAIN_ACCELERATOR`; project-evaluation option only; complement existing JS/TS tools first and migrate only with evidence; no global package or project dependency installation by default.
 
 Bootstrap integration registry:
+- AgentTerm — first-class project-session lifecycle, ledger, approval, scope,
+  adapter, verification, and continuity subsystem via
+  `scripts/bootstrap_session.py`; Bootstrap authority resolution remains
+  independent and superior.
 - MiroFish — optional local application; provenance and health reported by `scripts/tool_discovery.py`.
 - loadersz-core — optional browser library (`loadersz`); no MCP registration.
 - api-anything — optional local CLI/MCP server; declarative registration in `tooling/mcp.registration.json`.

@@ -74,6 +74,8 @@ class RunRequest:
     timeout: int = 3600
     verify_timeout: int = 900
     extra_context: dict[str, str] = field(default_factory=dict)
+    task_id: str | None = None
+    correlation_id: str | None = None
 
 
 @dataclass
@@ -141,6 +143,8 @@ def run_task(
         mutation_allowed=req.mutate,
         verification=[{"id": c, "description": f"run {c}"} for c in req.verify],
         playbook=playbooks.reference(book) if book else None,
+        task_id=req.task_id,
+        correlation_id=req.correlation_id,
     )
 
     # ---- preconditions (read-only discovery) ---------------------------------
