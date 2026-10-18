@@ -58,7 +58,10 @@ class OpenTerminalBridgeTests(unittest.TestCase):
                 cls.managed_socket_available = False
 
     def setUp(self):
-        if not self.managed_socket_available and self._testMethodName != "test_native_mode_reports_new_tab_without_claiming_capture":
+        if not self.managed_socket_available and self._testMethodName not in {
+            "test_native_mode_reports_new_tab_without_claiming_capture",
+            "test_managed_socket_name_stays_within_macos_path_limit",
+        }:
             self.skipTest("host sandbox denies AF_UNIX bind; managed PTY evidence is unverified")
 
     def test_managed_session_is_selected_multiline_and_audited(self):
@@ -154,6 +157,16 @@ class OpenTerminalBridgeTests(unittest.TestCase):
                     if handle is not None:
                         handle.terminate()
                         handle.wait(timeout=2)
+
+    def test_managed_socket_name_stays_within_macos_path_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            long_socket_dir = Path(directory) / ("nested-" + ("x" * 70))
+            with patch.dict(os.environ, {"CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR": str(long_socket_dir)}):
+                socket_path = open_terminal_bridge._socket_path(
+                    Path(directory) / "project", "terminal-" + ("a" * 32)
+                )
+            self.assertLessEqual(len(socket_path.name.encode()), 40)
+            self.assertRegex(socket_path.name, r"^cbs-[0-9a-f]{24}\.sock$")
 
     @patch("open_terminal_bridge.subprocess.run")
     def test_native_mode_reports_new_tab_without_claiming_capture(self, run):

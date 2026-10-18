@@ -26,6 +26,13 @@ outstanding**.
 
 ## Tests
 
+The subsequent owner-host failure investigation identified an overlong
+AF_UNIX socket path during managed server startup. The bridge now uses a
+short project/session-bound socket basename and reports bounded child startup
+stderr on readiness failure. A regression test for the path bound passes.
+The four host-managed tests and smoke must be rerun against the new local
+candidate.
+
 Passed during this qualification:
 
 - Bootstrap/security regression suite: **68 tests run, 64 passed, 4 skipped**.

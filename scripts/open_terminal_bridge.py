@@ -52,16 +52,36 @@ def _metadata_path(project_root: Path, session_id: str) -> Path:
 
 
 def _socket_path(project_root: Path, session_id: str) -> Path:
-    # Keep the location configurable for sandboxed hosts. The default remains
-    # the system temporary directory, but never derive it from the project
-    # path (macOS AF_UNIX paths are short).
+    # Keep the location configurable for sandboxed hosts, but keep the socket
+    # basename short. macOS sockaddr_un paths are limited to roughly 104
+    # bytes; embedding the full random session id can make a valid temporary
+    # directory unusable. The digest remains session/project-bound and the
+    # authenticated metadata still carries the exact path.
     directory = Path(os.environ.get("CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR", "/tmp")).expanduser()
     directory.mkdir(parents=True, exist_ok=True)
     try:
         os.chmod(directory, 0o700)
     except OSError:
         pass
-    return directory / f"codex-bootstrap-terminal-{session_id}.sock"
+    socket_id = hashlib.sha256(f"{project_root.resolve()}\0{session_id}".encode()).hexdigest()[:24]
+    return directory / f"cbs-{socket_id}.sock"
+
+
+def _startup_diagnostics(process: subprocess.Popen[bytes]) -> str:
+    """Return bounded server-startup diagnostics without exposing secrets."""
+    try:
+        stderr = process.stderr
+        if stderr is None:
+            return f"server exit status {process.returncode}"
+        data = stderr.read(4096)
+    except (OSError, ValueError):
+        data = b""
+    detail = data.decode(errors="replace").strip()
+    if len(detail) > 2000:
+        detail = detail[-2000:]
+    if detail:
+        return f"server exit status {process.returncode}; stderr: {detail}"
+    return f"server exit status {process.returncode}"
 
 
 def _write_metadata(path: Path, body: dict[str, Any]) -> None:
@@ -215,7 +235,7 @@ def open_session(project_root: Path, *, mode: str, approved: bool, command: str 
     process = subprocess.Popen(
         [sys.executable, str(Path(__file__).resolve()), "--serve", "--socket", str(sock), "--project-root", str(root),
          "--capability-file", str(capability_file)],
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
         start_new_session=True,
     )
     _PROCESS_HANDLES[session_id] = process
@@ -224,6 +244,8 @@ def open_session(project_root: Path, *, mode: str, approved: bool, command: str 
     _write_metadata(metadata_path, metadata)
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
+        if process.poll() is not None:
+            break
         if sock.exists():
             try:
                 with _connect(sock) as client:
@@ -245,7 +267,8 @@ def open_session(project_root: Path, *, mode: str, approved: bool, command: str 
         process.wait(timeout=2)
     _PROCESS_HANDLES.pop(session_id, None)
     capability_file.unlink(missing_ok=True)
-    raise TerminalBridgeError("managed terminal session did not become ready")
+    diagnostics = _startup_diagnostics(process)
+    raise TerminalBridgeError(f"managed terminal session did not become ready: {diagnostics}")
 
 
 def _connect(sock: Path) -> socket.socket:

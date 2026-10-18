@@ -43,6 +43,17 @@ Terminal.app Automation permission.
 
 ## Final qualification attempt
 
+### Managed PTY startup remediation
+
+Normal-host verification exposed a startup-only failure: the server process
+was started with stderr discarded, and the socket basename embedded the full
+session identifier. With macOS temporary-directory prefixes, the resulting
+AF_UNIX path could exceed the platform `sockaddr_un` path limit. The bridge
+now derives a short project/session-bound digest basename and preserves
+bounded server stderr and exit status in the readiness error. Authentication,
+metadata HMACs, replay rejection, approval gates, and process-group handling
+are unchanged. A regression test covers the bounded socket name.
+
 On the requested candidate, a fresh AF_UNIX probe returned
 PermissionError: [Errno 1] Operation not permitted. The four managed-PTY
 integration tests therefore resulted in 0 PASS, 0 FAIL, 4 SKIP. No managed
