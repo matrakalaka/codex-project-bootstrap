@@ -539,9 +539,9 @@ def _serve(sock_path: Path, project_root: Path, capability_file: Path) -> int:
     capability_session = capability.get("session_id")
     if not isinstance(capability_session, str) or not _ID_RE.fullmatch(capability_session):
         raise TerminalBridgeError("server capability has an invalid session identity")
+    _validate_socket_path(sock_path, require_socket=False)
     if sock_path.exists() or sock_path.is_symlink():
         raise TerminalBridgeError("terminal socket path collision detected")
-    _ensure_private_directory(sock_path.parent)
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server.bind(str(sock_path))
     try:

@@ -20,10 +20,11 @@ change global MCP configuration, touch devices, or modify protected systems.
 
 ## Qualification record
 
-The Bootstrap unittest suite reports **68 tests, 64 passed, 4 skipped**. The
-skips are managed PTY integration tests because this sandbox returns `EPERM`
-for AF_UNIX `bind`, including a project-local configurable socket directory.
-They are explicitly `NOT_RUN`, not passed. Native Terminal.app mock coverage,
+The Codex sandbox suite reports **74 tests, 70 passed, 4 skipped**. The skips
+are managed PTY integration tests because this sandbox returns `EPERM` for
+AF_UNIX `bind`; they are explicitly `NOT_RUN`, not passed. Normal macOS host
+verification separately reports **74/74 PASS**, including all four managed
+PTY tests and the managed Codex smoke. Native Terminal.app mock coverage,
 capability authorization, replay, metadata integrity, process-group
 termination, close failure, initialization concurrency/crash recovery,
 verification authorization, launcher tests, authority tests, and ledger CLI
@@ -31,16 +32,16 @@ behavior passed.
 
 Final qualification rerun on the requested commit confirmed:
 
-    AF_UNIX probe: BLOCKED_PRECONDITION (errno 1, Operation not permitted)
-    Four managed-PTY tests: 0 PASS, 0 FAIL, 4 SKIP
-    Bootstrap suite: 64 PASS, 0 FAIL, 4 SKIP (68 total)
-    Vendored AgentTerm pytest suite: BLOCKED_PRECONDITION / NOT RUN
-    Managed Codex CLI smoke: BLOCKED_PRECONDITION / NOT RUN
+    Normal macOS host: AF_UNIX PASS
+    Four managed-PTY tests: 4 PASS, 0 FAIL, 0 SKIP
+    Bootstrap suite: 74 PASS, 0 FAIL, 0 SKIP (74 total)
+    Managed Codex CLI smoke: PASS
+    Vendored AgentTerm pytest suite: BLOCKED (pytest unavailable)
 
-The vendored suite could not be recreated locally: no pytest executable was
-present in the previously referenced environment, system Python had no pytest,
-and network access was unavailable for a temporary installation. No 87-test
-pass claim is made.
+The isolated environment contains `agentterm 0.1.0`, but no pytest module,
+pytest executable, or local package cache was available. No global package
+installation or network-dependent provisioning was attempted, and no AgentTerm
+pytest pass claim is made.
 
 ## Owner-authorized normal Terminal qualification
 

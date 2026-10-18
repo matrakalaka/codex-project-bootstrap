@@ -4,7 +4,7 @@ set -u
 
 typeset repo="/Users/admin/codex-bootstrap-rc"
 typeset branch="release-candidate/agentterm-bootstrap-20261018"
-typeset commit="510b0eee2a6fa6192b1e347c2b41dc77dbf58342"
+typeset commit="fcfd6bb80b68893b41818e7b9e29c78a39bdb48e"
 typeset script_root="$(cd "$(dirname "$0")" && pwd -P)"
 typeset actual_repo="$(cd "$script_root/.." && pwd -P)"
 typeset stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -29,6 +29,18 @@ result() {
 log "Bootstrap host verification"
 log "Report: $report"
 log "Artifacts: $root"
+typeset missing_command=0
+for required_command in python3 git grep tr; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    result FAIL "host verifier prerequisite" "required command not found: $required_command" 1
+    missing_command=1
+  fi
+done
+if [[ "$missing_command" -ne 0 ]]; then
+  log "SUMMARY: PASS=$pass FAIL=$fail SKIP=$skip BLOCKED=$blocked"
+  log "RESULT: NOT READY — verifier prerequisites are missing."
+  exit 1
+fi
 if [[ "$actual_repo" == "$repo" ]]; then
   result PASS "repository identity" "$actual_repo" 1
 else
@@ -77,7 +89,7 @@ typeset managed="$root/managed_pty.txt"
 typeset managed_rc=$?
 if [[ "$managed_rc" -ne 0 ]]; then
   result FAIL "managed-PTY integration tests" "exit $managed_rc; see $managed" 4
-elif rg -q "skipped" "$managed"; then
+elif grep -q "skipped" "$managed"; then
   result SKIP "managed-PTY integration tests" "four tests skipped; see $managed" 4
 else
   result PASS "managed-PTY integration tests" "four tests executed; see $managed" 4

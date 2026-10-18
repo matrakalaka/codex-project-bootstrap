@@ -58,10 +58,9 @@ rejection, approval gates, and process-group handling are unchanged.
 Regression tests cover deep project paths, symlink substitution, concurrent
 runtime paths, collisions, and diagnostic output.
 
-On the requested candidate, a fresh AF_UNIX probe returned
-PermissionError: [Errno 1] Operation not permitted. The four managed-PTY
-integration tests therefore resulted in 0 PASS, 0 FAIL, 4 SKIP. No managed
-Codex CLI smoke was claimed. The capability/replay/cross-session, timeout,
-metadata, and close semantics remain covered by the passing non-socket unit
-tests; host integration remains BLOCKED_PRECONDITION until rerun from a
-normal owner-authorized macOS Terminal.
+Normal macOS host verification subsequently passed AF_UNIX binding, all four
+managed-PTY integration tests, the complete 74-test Bootstrap/security suite,
+and the managed `codex --version` smoke. The Codex sandbox still reports
+those four host tests as skipped because it denies AF_UNIX bind; those local
+results remain unverified in this environment. AgentTerm pytest remains
+blocked because the isolated environment lacks pytest.

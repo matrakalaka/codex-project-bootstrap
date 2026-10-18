@@ -31,20 +31,22 @@ AF_UNIX absolute socket path during managed server startup. The bridge now
 uses a validated private per-session runtime directory independent of project
 depth, measures the complete address, rejects unsafe runtime substitutions,
 and reports bounded child startup stderr and exit status. Sandbox regression
-qualification now reports 73 tests, 69 passed, and 4 host-managed skips with
-no ResourceWarning. The four host-managed tests and smoke must be rerun
-against the new local candidate.
+qualification in the Codex sandbox reports 74 tests, 70 passed, and 4
+host-managed skips with no ResourceWarning. A normal macOS host then passed
+AF_UNIX binding, all four managed-PTY tests, the complete 74-test Bootstrap
+suite, and the managed `codex --version` smoke. The host verifier was also
+made independent of ripgrep; missing required commands now fail closed.
 
 Passed during this qualification:
 
-- Bootstrap/security regression suite: **68 tests run, 64 passed, 4 skipped**.
-  The four skips are managed-PTY host tests; AF_UNIX bind is denied by this
-  Codex sandbox and therefore remains unverified here.
-- Vendored AgentTerm suite: **NOT RUN**. The previously cited isolated
-  environment was absent and network access prevented installing pytest into a
-  temporary environment; no pass claim is made.
-- Managed Codex CLI smoke: BLOCKED_PRECONDITION / NOT RUN because the same
-  AF_UNIX restriction prevented opening a managed session.
+- Bootstrap/security regression suite: **74 tests run, 70 passed, 4 skipped**
+  in this sandbox; the four skips are AF_UNIX-managed tests. Normal macOS
+  host evidence reports **74/74 PASS**.
+- Vendored AgentTerm suite: **BLOCKED**. The isolated environment contains
+  `agentterm 0.1.0` but no pytest module, executable, or available local
+  package cache. No installation or pass claim was made.
+- Managed Codex CLI smoke: **PASS** on the normal macOS host; output, exit
+  status, session identity, close state, and audit evidence were validated.
 - The new launcher test verified read-only discovery, explicit two-step
   authorization, session creation, and preservation of a dirty target file.
 - The denied AgentTerm launcher path returned code 2 and created no session.

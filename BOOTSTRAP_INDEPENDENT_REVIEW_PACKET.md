@@ -17,12 +17,12 @@ lifecycle/security tests.
 | --- | --- | --- |
 | Authority precedence | PASS | Launcher resolves authority before Codex or AgentTerm; lifecycle requires verified revision and file hashes. |
 | Approval before edits | PASS | Default launcher is read-only; AgentTerm execution requires a persisted matching plan and interactive confirmation. |
-| Session isolation | PASS with managed-host qualification pending | Session state binds project root and normalized Git identity; concurrent and interrupted initialization are locked/idempotent; terminal capabilities and metadata are session/project-bound. |
+| Session isolation | PASS with AgentTerm suite pending | Session state binds project root and normalized Git identity; concurrent and interrupted initialization are locked/idempotent; terminal capabilities and metadata are session/project-bound. |
 | Ledger integrity | PASS with documented limits | Status, resume, and verify block on corruption; tamper fixture is rejected. A hash chain is evidence, not a complete filesystem security boundary. |
 | Task correlation | PASS | Plan task/correlation IDs are passed into the AgentTerm runner and persisted in session state/ledger. |
 | Git scope and HEAD drift | PASS | Plan captures expected HEAD/scope; execution rejects drift or mismatched scope. |
 | Independent verification | PASS/PENDING review | Verification records and scope checks are implemented; reviewer must inspect that the verifier is independent of the executing agent in deployment use. |
-| Host bridge / Open Terminal | PASS with managed-host evidence pending | Managed PTY now authenticates socket requests, rejects replay, terminates its process group on timeout, and preserves close failure states. Four managed integration tests are unverified because this sandbox denies AF_UNIX bind. Native Terminal.app supports new-tab launch only; arbitrary existing-tab attach and native output capture are unsupported. |
+| Host bridge / Open Terminal | PASS with AgentTerm suite pending | Normal macOS evidence passed AF_UNIX binding, all four managed integration tests, the 74-test Bootstrap suite, and managed Codex smoke. Native Terminal.app supports new-tab launch only; arbitrary existing-tab attach and native output capture are unsupported. |
 | Failure recovery | PASS | Denied authorization, missing AgentTerm, invalid authority, corrupted ledger, and interrupted/changed-head paths produce blocked outcomes. |
 | Cross-project contamination | PASS | Synthetic project identity mismatch is rejected. |
 | Backward compatibility | PASS | Existing Bootstrap tests and launcher installer tests remain in the suite. |
@@ -34,9 +34,10 @@ lifecycle/security tests.
 launched in a new Terminal.app tab and returned window identifier `9523`.
 Managed PTY security/unit tests passed for capability authorization, replay,
 cross-project binding, metadata integrity, process-group termination, and
-failed close. Managed socket integration tests were explicitly skipped because
-AF_UNIX bind returns `EPERM` in this sandbox. This does not establish control
-over arbitrary preexisting tabs or an already-running Codex process.
+failed close. The Codex sandbox skips managed socket integration because
+AF_UNIX bind returns `EPERM`, but normal macOS host evidence passed AF_UNIX
+binding and all four managed integration tests. This does not establish
+control over arbitrary preexisting tabs or an already-running Codex process.
 
 ## Defect found and corrected during review
 
@@ -47,15 +48,15 @@ requires matching project identity and authority revision/files, and returns
 the existing state; mismatches fail closed. The regression is covered by
 `test_complete_lifecycle_and_fresh_resume`.
 
-Focused result: **68 Bootstrap/security tests, 64 passed and 4 skipped**.
-The vendored AgentTerm pytest suite is **NOT RUN** because its isolated pytest
-environment was absent and network access was unavailable; no pass claim is
-made.
+Focused sandbox result: **74 Bootstrap/security tests, 70 passed and 4
+skipped**. Normal macOS host result: **74/74 passed**, with all four managed
+PTY tests and the managed Codex smoke passing. The vendored AgentTerm pytest
+suite remains **BLOCKED** because its isolated environment has no pytest
+module, executable, or available local package cache; no pass claim is made.
 
-Final candidate rerun classification: PASS 64, FAIL 0, SKIP 4, BLOCKED 2
-(vendored pytest suite and managed Codex smoke). The AF_UNIX probe itself was
-BLOCKED_PRECONDITION with errno 1. Exact normal-Terminal rerun commands are
-recorded in BOOTSTRAP_SECURITY_REMEDIATION_20261018.md.
+Final host classification: **PASS 10, FAIL 0, SKIP 0, BLOCKED 1**. The sole
+blocker is the vendored AgentTerm pytest suite. Exact normal-Terminal rerun
+commands are recorded in BOOTSTRAP_SECURITY_REMEDIATION_20261018.md.
 
 ## Remediation review actions
 
@@ -63,10 +64,10 @@ The prior seven findings are addressed in
 `BOOTSTRAP_SECURITY_REMEDIATION_20261018.md`. The reviewer must inspect the
 capability protocol, process-group cancellation, initialization lock/recovery,
 verification authorization policy, status exit behavior, metadata MAC, and
-close-state transitions, then rerun the available tests. Four managed PTY
-integration tests are explicitly unverified in this sandbox because AF_UNIX
-bind returns `EPERM`; they must be rerun on an approved host before claiming
-host-qualified managed PTY evidence.
+close-state transitions. The four managed PTY integration tests are
+host-qualified by the supplied normal macOS evidence. The verifier fails
+closed if required portable commands are missing and no longer depends on
+ripgrep.
 
 ## Reviewer actions
 

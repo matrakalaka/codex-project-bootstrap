@@ -66,6 +66,7 @@ class OpenTerminalBridgeTests(unittest.TestCase):
             "test_runtime_symlink_is_rejected",
             "test_concurrent_runtime_paths_are_distinct",
             "test_startup_diagnostics_are_bounded_and_non_secret",
+            "test_socket_collision_is_rejected_without_overwrite",
         }:
             self.skipTest("host sandbox denies AF_UNIX bind; managed PTY evidence is unverified")
 
@@ -206,6 +207,20 @@ class OpenTerminalBridgeTests(unittest.TestCase):
             self.assertEqual(first.parent.stat().st_mode & 0o077, 0)
             open_terminal_bridge._cleanup_runtime_directory(first)
             open_terminal_bridge._cleanup_runtime_directory(second)
+
+    def test_socket_collision_is_rejected_without_overwrite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "runtime"
+            runtime.mkdir(mode=0o700)
+            session_id = "terminal-12345678"
+            capability = runtime / "capability"
+            open_terminal_bridge._write_secret(capability, project_root=root, session_id=session_id)
+            socket_path = runtime / "session.sock"
+            socket_path.write_text("owned marker", encoding="utf-8")
+            with self.assertRaises(TerminalBridgeError):
+                open_terminal_bridge._serve(socket_path, root, capability)
+            self.assertEqual(socket_path.read_text(encoding="utf-8"), "owned marker")
 
     def test_startup_diagnostics_are_bounded_and_non_secret(self):
         class FakeProcess:
