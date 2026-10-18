@@ -465,6 +465,7 @@ class TeamService:
             raise AuthorizationDenied("invalid, expired, or misbound invitation")
         members = self.orgs.get(actor.organization_id, {}).get("workspaces", {}).get(actor.workspace_id)
         if members is None: raise AuthorizationDenied("unknown tenant")
+        if actor.user_id in members: raise AuthorizationDenied("user is already a workspace member")
         if self.entitlements and not self.entitlements.permit(actor.organization_id, "seats"):
             raise AuthorizationDenied("seat entitlement exhausted")
         members[actor.user_id] = invite["role"]; self.audit.append({"op": "invite.accept", "actor": actor.user_id, "role": invite["role"]})
@@ -472,8 +473,9 @@ class TeamService:
         members = self.orgs.get(actor.organization_id, {}).get("workspaces", {}).get(actor.workspace_id, {})
         if operation not in ROLE_PERMISSIONS.get(members.get(actor.user_id), set()): raise AuthorizationDenied("team operation denied")
     def revoke(self, actor: Principal, user_id: str) -> None:
-        self.authorize(actor, "admin"); members = self.orgs[actor.organization_id]["workspaces"][actor.workspace_id]; members.pop(user_id, None)
-        if self.entitlements: self.entitlements.release(actor.organization_id, "seats")
+        self.authorize(actor, "admin"); members = self.orgs[actor.organization_id]["workspaces"][actor.workspace_id]
+        removed = members.pop(user_id, None)
+        if removed is not None and self.entitlements: self.entitlements.release(actor.organization_id, "seats")
         self.audit.append({"op": "member.revoke", "actor": actor.user_id, "target": user_id})
 
 
@@ -497,12 +499,14 @@ class EntitlementService:
         else: raise PlatformError("unknown billing event")
         self.events.add(event_id); self.audit.append({"event": event, "event_id": event_id, "organization": org}); return True
     def permit(self, org: str, feature: str, amount: int = 1) -> bool:
+        if amount <= 0: raise PlatformError("entitlement amount must be positive")
         sub = self.subscriptions.get(org); plan = PLANS.get(sub.get("plan")) if sub and sub.get("state") == "active" and (not sub.get("expires_at") or sub["expires_at"] >= utc_now()) else None
         if not plan: return False
         limit = plan.get(feature, 0); used = self.usage.get((org, feature), 0)
         if used + amount > limit: return False
         self.usage[(org, feature)] = used + amount; return True
     def release(self, org: str, feature: str, amount: int = 1) -> None:
+        if amount <= 0: raise PlatformError("entitlement amount must be positive")
         key = (org, feature); self.usage[key] = max(0, self.usage.get(key, 0) - amount)
     def status(self, org: str) -> dict[str, Any]:
         sub = self.subscriptions.get(org, {"plan": "free", "state": "inactive"})

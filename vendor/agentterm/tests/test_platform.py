@@ -68,6 +68,8 @@ def test_team_tenant_role_invitation_and_revocation():
 
 def test_entitlements_meter_limits_and_revoke():
     billing = EntitlementService(); billing.subscribe("org", "free")
+    with pytest.raises(PlatformError): billing.permit("org", "sync_objects", 0)
+    with pytest.raises(PlatformError): billing.release("org", "sync_objects", -1)
     assert billing.permit("org", "sync_objects")
     for _ in range(99): assert billing.permit("org", "sync_objects")
     assert not billing.permit("org", "sync_objects")
@@ -242,3 +244,5 @@ def test_team_seat_entitlement_is_enforced_and_released():
     with pytest.raises(AuthorizationDenied): team.accept(team.invite(alice.principal, "cara", "viewer"), cara.principal)
     team.revoke(alice.principal, "bob")
     team.accept(team.invite(alice.principal, "cara", "viewer"), cara.principal)
+    team.revoke(alice.principal, "nobody")
+    with pytest.raises(AuthorizationDenied): team.accept(team.invite(alice.principal, "extra", "viewer"), create_device("org", "ws", "p", "extra", registry=registry)[0].principal)
