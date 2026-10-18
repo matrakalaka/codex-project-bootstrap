@@ -63,3 +63,41 @@ site data remain outside Bootstrap.
 Bootstrap tests validate provenance, manifest completeness, registration
 syntax, and missing-tool reporting. They do not claim that an optional tool is
 operational unless its local executable and safe health check pass.
+
+## 2026-10-18 isolated qualification
+
+Provisioning was performed under the ignored repository-local
+`.bootstrap-tools/` root without global installation:
+
+- MiroFish `v0.1.2` / commit `985f89f49acbb44ee14d9d680682c741a44eeebe`:
+  source and frontend dependencies installed; frontend build passed. Full
+  backend activation is `INCOMPATIBLE` in this environment because upstream
+  requires `uv` and Python 3.11–3.12, while `uv` is absent and Python 3.14.3
+  is present. No API keys or services were started.
+- loadersz-core `v0.9.0` / commit
+  `aa2c2defc8cea0d343d9bfbab70aca01ebd322f2`: typecheck passed, 226 tests
+  passed, Angular adapter generation passed, and package build passed.
+- api-anything commit `b20d809d218a1273c1941b72a8cd8188e11da7cc`: Node
+  25.8.1 satisfies the upstream Node >=22.13 requirement; build, CLI help,
+  MCP EOF startup, and the full upstream suite (620/620) passed. The
+  executable is provisioned but remains `NOT_REGISTERED` in the active Codex
+  configuration until owner approval is given for the exact MCP change.
+
+Use `scripts/tool_discovery.py --tool-root .bootstrap-tools --json` to report the isolated
+qualification without changing PATH or global Codex configuration.
+
+### Pending active Codex registration
+
+After explicit owner approval, back up `~/.codex/config.toml` and add this
+server entry while preserving every existing entry:
+
+```toml
+[mcp_servers.api-anything]
+command = "/Users/admin/codex-bootstrap-four-tool/.bootstrap-tools/install/api-anything/node_modules/.bin/api-anything"
+args = ["mcp"]
+```
+
+The exact change must be reviewed against the current file before application;
+this task did not create a backup or modify that file. Restart Codex, run
+`codex mcp list`, and rerun `scripts/tool_discovery.py --tool-root
+.bootstrap-tools --json`. Only then may api-anything become `AVAILABLE`.

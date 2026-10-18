@@ -25,3 +25,14 @@ create credentials, launch services, or modify global Codex configuration.
 The Open Terminal row remains blocked until the owner supplies the exact
 upstream identity. `Terminal.app` presence alone is not proof of the requested
 integration.
+
+An isolated provisioning root can be inspected with `--tool-root`; this does
+not make a tool globally installed or active in Codex. An installed MCP CLI is
+reported `NOT_REGISTERED` until the active Codex configuration contains the
+validated server entry. The 2026-10-18
+qualification is recorded in `BOOTSTRAP_FOUR_TOOL_INTEGRATION.md`.
+
+Current isolated qualification: MiroFish `INCOMPATIBLE`, loadersz-core
+`AVAILABLE` as an isolated library, and api-anything `NOT_REGISTERED` despite
+an operational isolated CLI. The latter is intentionally not reported as
+active until Codex configuration approval is granted.

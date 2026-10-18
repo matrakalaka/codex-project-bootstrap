@@ -51,7 +51,16 @@ def _mcp_registration() -> dict[str, Any]:
     return {"valid": True, "servers": sorted(servers)}
 
 
-def discover() -> dict[str, Any]:
+def _active_codex_mcp_registration(name: str, config_path: Path | None = None) -> bool:
+    path = config_path or (Path.home() / ".codex" / "config.toml")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return f"[mcp_servers.{name}]" in text
+
+
+def discover(tool_root: Path | None = None) -> dict[str, Any]:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     registration = _mcp_registration()
     terminal_app = Path("/System/Applications/Utilities/Terminal.app")
@@ -71,26 +80,45 @@ def discover() -> dict[str, Any]:
             status = "BLOCKED" if tool["status_policy"].startswith("BLOCKED") else "NOT_INSTALLED"
             evidence["reason"] = "exact upstream/provider identity is required"
         elif tool_id == "api-anything":
-            version = _command_version("api-anything", ["--version"])
+            isolated_bin = tool_root / "install" / "api-anything" / "node_modules" / ".bin" / "api-anything" if tool_root else None
+            command = str(isolated_bin) if isolated_bin and isolated_bin.exists() else "api-anything"
+            version = _command_version(command, ["--version"])
             evidence["version"] = version
-            evidence["registered"] = registration.get("valid") and tool_id in registration.get("servers", [])
+            evidence["installation_root"] = str(tool_root) if isolated_bin and isolated_bin.exists() else None
+            evidence["local_registration"] = registration.get("valid") and tool_id in registration.get("servers", [])
+            evidence["active_codex_registration"] = _active_codex_mcp_registration(tool_id)
             if version is not None:
                 evidence["available"] = True
                 try:
                     health = subprocess.run(
-                        ["api-anything", "--help"], check=False, capture_output=True, text=True, timeout=5
+                        [command, "--help"], check=False, capture_output=True, text=True, timeout=5
                     )
                     evidence["operational"] = health.returncode == 0
                 except (OSError, subprocess.TimeoutExpired):
                     evidence["operational"] = False
-            status = "AVAILABLE" if evidence["operational"] else "NOT_INSTALLED"
+            if evidence["operational"]:
+                status = "AVAILABLE" if evidence["active_codex_registration"] else "NOT_REGISTERED"
+            else:
+                status = "NOT_INSTALLED"
         elif tool_id == "mirofish":
             evidence["expected_entrypoint"] = "upstream application; no CLI/MCP command asserted"
-            evidence["local_checkout"] = False
+            checkout = tool_root / "src" / "MiroFish" if tool_root else None
+            evidence["local_checkout"] = bool(checkout and checkout.is_dir())
+            evidence["frontend_build"] = bool(checkout and (checkout / "frontend" / "dist").is_dir())
+            evidence["uv_available"] = shutil.which("uv") is not None
+            evidence["python"] = _command_version("python3", ["--version"])
+            if evidence["local_checkout"] and evidence["frontend_build"] and not evidence["uv_available"]:
+                status = "INCOMPATIBLE"
         elif tool_id == "loadersz-core":
             evidence["expected_entrypoint"] = "npm package: loadersz"
             evidence["node"] = _command_version("node", ["--version"])
+            package_root = tool_root / "src" / "loadersz-core" if tool_root else None
             evidence["npm_package_probe"] = "NOT_RUN (discovery is read-only and package is project-specific)"
+            evidence["installation_root"] = str(tool_root) if package_root and package_root.is_dir() else None
+            if package_root and (package_root / "node_modules").is_dir() and (package_root / "dist").is_dir():
+                evidence["available"] = True
+                evidence["operational"] = True
+                status = "AVAILABLE"
         results.append({"id": tool_id, "name": tool["name"], "status": status, "evidence": evidence})
     return {
         "schema_version": "bootstrap_tool_discovery.v1",
@@ -104,9 +132,15 @@ def discover() -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit JSON (default and compatibility flag)")
+    parser.add_argument(
+        "--tool-root",
+        type=Path,
+        default=Path(os.environ["CODEX_BOOTSTRAP_TOOL_ROOT"]).expanduser()
+        if os.environ.get("CODEX_BOOTSTRAP_TOOL_ROOT") else None,
+        help="optional isolated provisioning root; never installed or modified by discovery",
+    )
     args = parser.parse_args(argv)
-    del args
-    print(json.dumps(discover(), indent=2, sort_keys=True))
+    print(json.dumps(discover(args.tool_root), indent=2, sort_keys=True))
     return 0
 
 

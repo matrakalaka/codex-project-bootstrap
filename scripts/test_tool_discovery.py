@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -35,6 +36,21 @@ class ToolDiscoveryTests(unittest.TestCase):
         self.assertEqual({item["id"] for item in payload["tools"]}, {
             "open-terminal", "mirofish", "loadersz-core", "api-anything"
         })
+
+    def test_isolated_provisioning_root_is_reported_without_global_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            api_bin = root / "install" / "api-anything" / "node_modules" / ".bin"
+            api_bin.mkdir(parents=True)
+            (api_bin / "api-anything").write_text("#!/bin/sh\nprintf '0.1.0\\n'\n", encoding="utf-8")
+            (api_bin / "api-anything").chmod(0o755)
+            loader_root = root / "src" / "loadersz-core"
+            (loader_root / "node_modules").mkdir(parents=True)
+            (loader_root / "dist").mkdir()
+            result = tool_discovery.discover(root)
+            statuses = {item["id"]: item["status"] for item in result["tools"]}
+            self.assertEqual(statuses["api-anything"], "NOT_REGISTERED")
+            self.assertEqual(statuses["loadersz-core"], "AVAILABLE")
 
     @patch.object(tool_discovery.Path, "exists", return_value=False)
     @patch.object(tool_discovery, "_command_version", return_value=None)

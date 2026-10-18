@@ -17,8 +17,8 @@ packet, or conversation transcript.
 **Branch:** `integration/four-tool-sandbox-20261017`
 **Current observed HEAD:** `825431647280f4c19a428b00e2639d23d6305519`
 **Status:** PARTIAL — Bootstrap integration is implemented and verified;
-Open Terminal identity remains blocked, and optional external tools are not
-installed in this environment.
+Open Terminal identity remains blocked; isolated provisioning is qualified;
+active api-anything Codex registration remains approval-gated.
 
 **Objective:** Make the four requested capabilities explicitly discoverable,
 accurately classified, safely registered where an MCP interface exists, and
@@ -29,10 +29,11 @@ documented, while providing a fail-closed host-execution bridge.
 `tooling/bootstrap_tools.json`, `tooling/mcp.registration.json`,
 `scripts/tool_discovery.py`, and `scripts/host_exec_bridge.py`.
 
-**Tool outcomes:** Open Terminal `BLOCKED`; MiroFish `NOT_INSTALLED`;
-loadersz-core `NOT_INSTALLED`; api-anything `NOT_INSTALLED` with a valid
-declarative MCP registration. The discovery command and fresh-session
-subprocess test report these outcomes without omission.
+**Tool outcomes:** Open Terminal `BLOCKED`; MiroFish `INCOMPATIBLE` for this
+host's full backend activation; loadersz-core `AVAILABLE` in the isolated
+provisioning root; api-anything `NOT_REGISTERED` despite an operational
+isolated CLI and valid declarative MCP registration. The discovery command
+reports these outcomes without omission.
 
 **Validation:** 45 script/tool tests, 18 continuity tests, 13 contract/North
 Star tests, and 9 playbook tests passed. JSON parsing, Python compilation,
@@ -48,6 +49,26 @@ and deployment were untouched.
 provisioning of the exact Open Terminal source and separately approved
 installation/session registration for any optional tool that should become
 operational. Do not claim `AVAILABLE` from the declarative registration alone.
+
+## 2026-10-18 provisioning qualification
+
+**Provisioning root:** `.bootstrap-tools/` (repository-local ignored,
+isolated, non-global).
+
+- MiroFish `v0.1.2`, commit `985f89f49acbb44ee14d9d680682c741a44eeebe`:
+  source/frontend dependencies and frontend build passed. Backend activation
+  is `INCOMPATIBLE`: `uv` is absent and Python 3.14.3 is outside the upstream
+  Python 3.11–3.12 requirement. No credentials or services were started.
+- loadersz-core `v0.9.0`, commit `aa2c2defc8cea0d343d9bfbab70aca01ebd322f2`:
+  226/226 tests, typecheck, Angular adapter generation, and package build
+  passed.
+- api-anything commit `b20d809d218a1273c1941b72a8cd8188e11da7cc`:
+  build, CLI help, MCP EOF startup, and 620/620 upstream tests passed. Its
+  isolated CLI remains `NOT_REGISTERED` in active Codex configuration.
+
+**Pending approval:** exact proposed Codex addition is the existing
+`api-anything` server entry from `tooling/mcp.registration.json`, bound to the
+isolated executable path. No backup or global config mutation was performed.
 
 **Checkpoint ID:** bootstrap-memory-integration-qualification
 **Date:** 2026-10-16

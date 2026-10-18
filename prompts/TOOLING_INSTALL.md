@@ -36,6 +36,9 @@ after installation:
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/tool_discovery.py --json
 ```
 
+For an isolated provisioning root, pass `--tool-root <path>` or set
+`CODEX_BOOTSTRAP_TOOL_ROOT`; discovery never creates or modifies that root.
+
 Do not turn a declarative MCP registration into an `AVAILABLE` result until
 the executable, runtime compatibility, and a safe health check pass.
 
