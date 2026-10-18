@@ -2,8 +2,9 @@
 
 ## Local results
 
-- AgentTerm tests: **127 PASS**, **2 SKIP** for sandbox-denied loopback bind.
-- Strict `ResourceWarning`: **127 PASS**, **2 SKIP** for sandbox-denied loopback bind.
+- AgentTerm tests: **128 PASS**, **3 SKIP**: two sandbox socket skips and one
+  unavailable PostgreSQL driver.
+- Strict `ResourceWarning`: **128 PASS**, **3 SKIP**.
 - Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
 - AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
 - Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.
@@ -41,6 +42,8 @@ must be rerun after this commit.
   loopback bind is denied; the owner-run script is provided for host evidence.
 - Native Keychain compilation: **BLOCKED**, due to host Swift SDK/compiler
   mismatch and module-cache permissions; mock contract tests pass.
+- PostgreSQL multi-instance qualification: **BLOCKED/SKIP**; no PostgreSQL
+  driver/server is available and Docker is not running.
 
 ## Not qualified
 

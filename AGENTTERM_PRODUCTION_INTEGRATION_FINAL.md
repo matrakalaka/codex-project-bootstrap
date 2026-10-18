@@ -52,6 +52,8 @@ restart recovery, disposable Git merge, and unknown-state blocking.
 - Compilation, wheel packaging, CLI acceptance, and diff checks: passed.
 - `scripts/qualify_agentterm_host.sh` provides one-command normal-host
   qualification for the targeted tests and staging acceptance.
+- PostgreSQL storage contract is implemented but unqualified because no
+  PostgreSQL server, driver, or Docker daemon is available locally.
 
 ## External gates
 

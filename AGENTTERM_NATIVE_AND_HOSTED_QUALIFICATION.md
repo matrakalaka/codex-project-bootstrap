@@ -52,3 +52,10 @@ staging-acceptance --root "$(mktemp -d)"
 
 It must be run on a host permitting loopback sockets. Production activation is
 blocked pending independent review and infrastructure approval.
+
+The distributed storage contract is implemented in `postgres.py` with
+transactional connection ownership, PostgreSQL primary-key replay constraints,
+`FOR UPDATE` serialization, cursor tables, and `deploy/postgres-schema.sql`.
+No PostgreSQL server or driver is installed in this environment, and Docker is
+not running, so multi-instance consistency is **BLOCKED/UNQUALIFIED**, not
+passed.

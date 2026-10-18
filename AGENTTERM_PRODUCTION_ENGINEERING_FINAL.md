@@ -25,6 +25,7 @@ repositories or production infrastructure.
 | Runtime/HTTPS contracts | Implemented and tested | `integration.py` |
 | Native macOS Keychain | Not activated; external host/API review gate | fail-closed existing adapter |
 | Hosted multi-instance sync | Not deployed | requires service/database/TLS infrastructure |
+| PostgreSQL distributed store | Implemented, unqualified | `postgres.py`, `deploy/postgres-schema.sql`; no driver/server available |
 
 ## Commands
 
@@ -52,11 +53,16 @@ cd /Users/admin/codex-agentterm-phase1
 
 ## Evidence
 
-- AgentTerm strict suite: **126 passed, 2 sandbox skips**.
+- AgentTerm strict suite: **128 passed, 3 skips** (two socket sandbox skips and
+  one unavailable PostgreSQL driver).
 - Bootstrap/security/continuity: **101 passed, 4 AF_UNIX skips**.
 - Owner historical staging qualification: **36 passed, 0 failed, 0 skipped**.
 - Current sandbox staging acceptance: blocked by loopback policy; not counted.
 - Wheel packaging, compilation, CLI demo, health, and diff checks: passed.
+
+The PostgreSQL adapter has not been represented as multi-instance evidence:
+Docker is unavailable, no PostgreSQL server is running, and neither psycopg
+driver is installed.
 
 The Security.framework helper and fail-closed wrapper are now implemented, but
 native compilation/qualification is blocked on this host by the Swift
