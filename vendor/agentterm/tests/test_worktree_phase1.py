@@ -66,6 +66,17 @@ def test_create_isolation_and_state_authentication(tmp_path, fixture_repo):
     with pytest.raises(IntegrityError): m.get(record.worktree_id)
 
 
+def test_interrupted_metadata_write_is_recovered_as_unknown(tmp_path, fixture_repo, monkeypatch):
+    m, actor, grants = manager(tmp_path, fixture_repo)
+    original_replace = __import__("os").replace
+    def fail_once(source, target):
+        monkeypatch.setattr(__import__("os"), "replace", original_replace)
+        raise OSError("simulated crash during metadata commit")
+    monkeypatch.setattr(__import__("os"), "replace", fail_once)
+    with pytest.raises(OSError): m.create(fixture_repo, task_id="crash", owner=actor, grants=grants)
+    assert any(item.state is State.BLOCKED for item in m.recover())
+
+
 def test_lifecycle_approval_binding_merge_and_replay(tmp_path, fixture_repo):
     m, actor, grants = manager(tmp_path, fixture_repo)
     record = m.create(fixture_repo, task_id="t", owner=actor, grants=grants)

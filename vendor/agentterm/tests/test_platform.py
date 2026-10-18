@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from agentterm.platform import (AuthorizationDenied, ConflictError, CryptoProvider, EntitlementService,
-                                LocalSyncServer, PlatformError, SyncClient, TeamService, TrustRegistry,
+                                FileKeyStorage, LocalSyncServer, OfflineQueue, PlatformError, SyncClient, TeamService, TrustRegistry,
                                 create_device, integrated_local_flow)
 
 
@@ -65,6 +65,7 @@ def test_entitlements_meter_limits_and_revoke():
 def test_integrated_local_flow(tmp_path):
     result = integrated_local_flow(tmp_path)
     assert result["encrypted_sync"] and result["team_revocation"] and result["entitlement_enforced"]
+    assert result["conflict_detected"] and result["worktree_merged"] and result["recovery_blocked_unknown"]
 
 
 def test_crypto_rejects_wrong_key_and_tampering():
@@ -95,3 +96,24 @@ def test_expired_plan_and_misbinding_are_denied():
     with pytest.raises(AuthorizationDenied): team.accept("forged-token", mallory.principal)
     billing = EntitlementService(); billing.subscribe("org", "pro", expires_at="2000-01-01T00:00:00Z")
     assert not billing.permit("org", "sync_objects")
+
+
+def test_key_store_preserves_keys_and_offline_queue_retries(tmp_path):
+    private, _ = CryptoProvider.signing_key(); other, _ = CryptoProvider.signing_key()
+    keys = FileKeyStorage(tmp_path / "keys.json"); keys.put("one", private); keys.put("two", other)
+    assert keys.get("one") == private and keys.get("two") == other
+    registry, alice, alice_private, _, _, server, key = setup_platform(tmp_path)
+    envelope = SyncClient(alice, alice_private, key, server).publish("queued", b"data", sequence=1)
+    queue = OfflineQueue(tmp_path / "queue.db"); queue.enqueue(envelope)
+    assert queue.flush(type("Failing", (), {"upload": lambda self, item: (_ for _ in ()).throw(PlatformError("offline"))})(), now=0) == (0, 1)
+    assert queue.flush(server, now=2) == (1, 0)
+    queue.close(); server.close()
+
+
+def test_billing_event_is_idempotent_and_size_limits_apply(tmp_path):
+    billing = EntitlementService(); assert billing.apply_billing_event("evt-1", "org", "subscription.updated", plan="pro")
+    assert not billing.apply_billing_event("evt-1", "org", "subscription.updated", plan="free")
+    assert billing.status("org")["subscription"]["plan"] == "pro"
+    registry, alice, private, _, _, server, key = setup_platform(tmp_path)
+    with pytest.raises(PlatformError): SyncClient(alice, private, key, server).publish("large", b"x" * (LocalSyncServer.max_envelope_bytes + 1), sequence=1)
+    server.close()

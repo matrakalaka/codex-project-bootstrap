@@ -44,11 +44,11 @@ those approvals.
 
 ## Qualification checkpoint
 
-At milestone commit `27617b8`:
+At the current hardening checkpoint:
 
-- AgentTerm suite: **108 passed**, including Phase 0 security, Phase 1
+- AgentTerm suite: **111 passed**, including Phase 0 security, Phase 1
   worktree, and platform adversarial tests;
-- strict `ResourceWarning`: **108 passed**;
+- strict `ResourceWarning`: **111 passed**;
 - Bootstrap/security/continuity regression: **101 passed**, **4 skipped**;
   every skip is an AF_UNIX bind denied by the host sandbox and remains
   unqualified;

@@ -14,6 +14,8 @@ import json
 import os
 import secrets
 import sqlite3
+import subprocess
+import time
 import uuid
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -103,6 +105,18 @@ class CryptoProvider:
         except Exception as exc: raise PlatformError("ciphertext authentication failed") from exc
 
 
+class MacOSKeychainStorage:
+    """Keychain contract; native implementation is intentionally not activated."""
+    production_ready = False
+    def __init__(self, service: str = "agentterm", account: str = "default", *, runner=None):
+        if runner is None: raise PlatformError("native Keychain adapter requires independent review before activation")
+        self.service, self.account, self.runner = service, account, runner
+    def put(self, key_id: str, private: bytes) -> None:
+        raise PlatformError("Keychain adapter contract is not activated")
+    def get(self, key_id: str) -> bytes:
+        raise PlatformError("Keychain adapter contract is not activated")
+
+
 @dataclass(frozen=True)
 class TrustKey:
     key_id: str
@@ -137,7 +151,12 @@ class FileKeyStorage:
     production_ready = False
     def __init__(self, root: Path | str): self.path = Path(root); self.path.parent.mkdir(parents=True, exist_ok=True)
     def put(self, key_id: str, private: bytes) -> None:
-        self.path.write_text(json.dumps({key_id: _b64(private)}, sort_keys=True)); os.chmod(self.path, 0o600)
+        values = {}
+        if self.path.exists():
+            try: values = json.loads(self.path.read_text())
+            except json.JSONDecodeError as exc: raise PlatformError("key store is corrupt") from exc
+        values[key_id] = _b64(private)
+        temp = self.path.with_suffix(".tmp"); temp.write_text(json.dumps(values, sort_keys=True)); os.chmod(temp, 0o600); os.replace(temp, self.path); os.chmod(self.path, 0o600)
     def get(self, key_id: str) -> bytes:
         try: return _unb64(json.loads(self.path.read_text())[key_id])
         except (OSError, KeyError, json.JSONDecodeError) as exc: raise PlatformError("private key unavailable") from exc
@@ -180,22 +199,27 @@ class SyncEnvelope:
 
 class LocalSyncServer:
     """Opaque local service: SQLite stores ciphertext only, never plaintext."""
+    protocol_version = "agentterm.sync.v1"
+    max_envelope_bytes = 1 << 20
     def __init__(self, path: Path | str, *, registry: TrustRegistry):
         self.path = Path(path); self.registry = registry
-        self.db = sqlite3.connect(str(self.path)); self.db.execute("CREATE TABLE IF NOT EXISTS objects (project TEXT, object_id TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sequence))")
+        self.db = sqlite3.connect(str(self.path)); self.db.execute("CREATE TABLE IF NOT EXISTS objects (project TEXT, object_id TEXT, sender_device TEXT, sequence INTEGER, envelope TEXT, digest TEXT, PRIMARY KEY(project, object_id, sender_device, sequence))")
         self.db.execute("CREATE TABLE IF NOT EXISTS sequences (device TEXT, project TEXT, sequence INTEGER, digest TEXT, PRIMARY KEY(device, project, sequence))")
         self.db.execute("CREATE TABLE IF NOT EXISTS cursors (device TEXT, project TEXT, sequence INTEGER, PRIMARY KEY(device, project))"); self.db.commit()
     def close(self): self.db.close()
+    def negotiate(self, version: str) -> bool:
+        return version == self.protocol_version
     def upload(self, envelope: SyncEnvelope) -> None:
-        if envelope.schema != "agentterm.sync.v1" or envelope.sequence < 0: raise PlatformError("invalid sync envelope")
+        if envelope.schema != self.protocol_version or envelope.sequence < 0: raise PlatformError("invalid sync envelope")
+        if len(canonical_bytes(asdict(envelope))) > self.max_envelope_bytes: raise PlatformError("sync envelope exceeds size limit")
         device = self.registry.get(envelope.key_id)
         if device.owner.device_id != envelope.sender_device or device.owner.project_id != envelope.project_id: raise PlatformError("sender/project binding failed")
         if not CryptoProvider.verify(_unb64(device.public_key), envelope.signing_bytes(), _unb64(envelope.signature)): raise PlatformError("invalid sync signature")
-        existing = self.db.execute("SELECT digest FROM objects WHERE project=? AND object_id=? AND sequence=?", (envelope.project_id, envelope.object_id, envelope.sequence)).fetchone()
+        existing = self.db.execute("SELECT digest FROM objects WHERE project=? AND object_id=? AND sender_device=? AND sequence=?", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence)).fetchone()
         if existing:
             if existing[0] == envelope.digest(): return
             raise ConflictError("sequence already contains a different envelope")
-        latest = self.db.execute("SELECT envelope, digest FROM objects WHERE project=? AND object_id=? ORDER BY sequence DESC LIMIT 1", (envelope.project_id, envelope.object_id)).fetchone()
+        latest = self.db.execute("SELECT envelope, digest FROM objects WHERE project=? AND object_id=? ORDER BY rowid DESC LIMIT 1", (envelope.project_id, envelope.object_id)).fetchone()
         if latest:
             latest_envelope = json.loads(latest[0])
             if envelope.base_digest != latest[1]:
@@ -205,7 +229,7 @@ class LocalSyncServer:
         if prior is not None and envelope.sequence <= prior:
             raise PlatformError("replayed or non-increasing device sequence")
         self.db.execute("INSERT INTO sequences VALUES(?,?,?,?)", (envelope.sender_device, envelope.project_id, envelope.sequence, envelope.digest()))
-        self.db.execute("INSERT INTO objects VALUES(?,?,?,?,?)", (envelope.project_id, envelope.object_id, envelope.sequence, raw, envelope.digest()))
+        self.db.execute("INSERT INTO objects VALUES(?,?,?,?,?,?)", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence, raw, envelope.digest()))
         self.db.commit()
     def pull(self, device: Device, project: str, after: int = 0) -> list[SyncEnvelope]:
         if device.principal.project_id != project: raise AuthorizationDenied("cross-project sync denied")
@@ -222,6 +246,7 @@ class SyncClient:
         self.device, self.private, self.project_key, self.server = device, private_key, project_key, server
         if len(project_key) != 32: raise PlatformError("project key must be 256 bits")
     def publish(self, object_id: str, content: bytes, *, sequence: int, base_digest: str | None = None) -> SyncEnvelope:
+        if len(content) > LocalSyncServer.max_envelope_bytes: raise PlatformError("sync payload exceeds size limit")
         aad = canonical_bytes({"project": self.device.principal.project_id, "object": object_id, "sequence": sequence})
         nonce, ciphertext = CryptoProvider.encrypt(self.project_key, content, aad)
         unsigned = SyncEnvelope(object_id, self.device.principal.project_id, self.device.device_id, sequence, base_digest, _b64(nonce), _b64(ciphertext), self.device.key_id, "", utc_now())
@@ -230,6 +255,27 @@ class SyncClient:
     def consume(self, envelope: SyncEnvelope) -> bytes:
         aad = canonical_bytes({"project": envelope.project_id, "object": envelope.object_id, "sequence": envelope.sequence})
         return CryptoProvider.decrypt(self.project_key, _unb64(envelope.nonce), _unb64(envelope.ciphertext), aad)
+
+
+class OfflineQueue:
+    """Durable, bounded retry queue for a transport implementing ``upload``."""
+    def __init__(self, path: Path | str, *, max_items: int = 1000):
+        self.path, self.max_items = Path(path), max_items; self.db = sqlite3.connect(str(self.path))
+        self.db.execute("CREATE TABLE IF NOT EXISTS queue (id TEXT PRIMARY KEY, envelope TEXT NOT NULL, attempts INTEGER NOT NULL, next_at REAL NOT NULL)"); self.db.commit()
+    def close(self): self.db.close()
+    def enqueue(self, envelope: SyncEnvelope) -> None:
+        if self.db.execute("SELECT COUNT(*) FROM queue").fetchone()[0] >= self.max_items: raise PlatformError("offline queue is full")
+        queue_id = ":".join((envelope.project_id, envelope.sender_device, envelope.object_id, str(envelope.sequence)))
+        self.db.execute("INSERT OR IGNORE INTO queue VALUES(?,?,?,?)", (queue_id, json.dumps(asdict(envelope), sort_keys=True), 0, 0.0)); self.db.commit()
+    def flush(self, transport: Any, *, now: float | None = None, limit: int = 100) -> tuple[int, int]:
+        sent = failed = 0; point = time.time() if now is None else now
+        rows = self.db.execute("SELECT id,envelope,attempts FROM queue WHERE next_at<=? ORDER BY id LIMIT ?", (point, limit)).fetchall()
+        for item_id, raw, attempts in rows:
+            try:
+                transport.upload(SyncEnvelope(**json.loads(raw))); self.db.execute("DELETE FROM queue WHERE id=?", (item_id,)); sent += 1
+            except Exception:
+                attempts += 1; self.db.execute("UPDATE queue SET attempts=?,next_at=? WHERE id=?", (attempts, point + min(300, 2 ** min(attempts, 8)), item_id)); failed += 1
+        self.db.commit(); return sent, failed
 
 
 ROLE_PERMISSIONS = {"owner": {"read", "write", "invite", "admin"}, "editor": {"read", "write"}, "viewer": {"read"}}
@@ -267,13 +313,21 @@ PLANS = {"free": {"devices": 1, "seats": 1, "sync_objects": 100}, "pro": {"devic
 
 
 class EntitlementService:
-    def __init__(self): self.subscriptions: dict[str, dict[str, Any]] = {}; self.usage: dict[tuple[str, str], int] = {}
+    def __init__(self): self.subscriptions: dict[str, dict[str, Any]] = {}; self.usage: dict[tuple[str, str], int] = {}; self.events: set[str] = set(); self.audit: list[dict[str, Any]] = []
     def subscribe(self, org: str, plan: str, *, expires_at: str | None = None) -> None:
         if plan not in PLANS: raise PlatformError("unknown plan")
         self.subscriptions[org] = {"plan": plan, "state": "active", "expires_at": expires_at}
+        self.audit.append({"event": "subscription.active", "organization": org, "plan": plan})
     def change(self, org: str, plan: str) -> None: self.subscribe(org, plan, expires_at=self.subscriptions.get(org, {}).get("expires_at"))
     def revoke(self, org: str) -> None:
         if org in self.subscriptions: self.subscriptions[org]["state"] = "revoked"
+        self.audit.append({"event": "subscription.revoked", "organization": org})
+    def apply_billing_event(self, event_id: str, org: str, event: str, **payload: Any) -> bool:
+        if not event_id or event_id in self.events: return False
+        if event == "subscription.updated": self.subscribe(org, str(payload["plan"]), expires_at=payload.get("expires_at"))
+        elif event in {"subscription.revoked", "subscription.suspended"}: self.revoke(org)
+        else: raise PlatformError("unknown billing event")
+        self.events.add(event_id); self.audit.append({"event": event, "event_id": event_id, "organization": org}); return True
     def permit(self, org: str, feature: str, amount: int = 1) -> bool:
         sub = self.subscriptions.get(org); plan = PLANS.get(sub.get("plan")) if sub and sub.get("state") == "active" and (not sub.get("expires_at") or sub["expires_at"] >= utc_now()) else None
         if not plan: return False
@@ -294,10 +348,29 @@ def integrated_local_flow(root: Path | str) -> dict[str, Any]:
     one = SyncClient(first, first_private, key, server); two = SyncClient(second, second_private, key, server)
     envelope = one.publish("object-1", b"workspace change", sequence=1)
     assert two.consume(server.pull(second, "project")[0]) == b"workspace change"
+    two.publish("object-1", b"workspace change v2", sequence=1, base_digest=envelope.digest())
+    conflict_detected = False
+    try: one.publish("object-1", b"stale change", sequence=2, base_digest=envelope.digest())
+    except ConflictError: conflict_detected = True
     team = TeamService(); team.create_workspace("org", "ws", first.principal)
     invitation = team.invite(first.principal, "bob", "editor"); team.accept(invitation, second.principal)
     team.authorize(second.principal, "write"); team.revoke(first.principal, "bob")
     try: team.authorize(second.principal, "write"); raise AssertionError("revoked member was authorized")
     except AuthorizationDenied: pass
     billing = EntitlementService(); billing.subscribe("org", "free"); allowed = billing.permit("org", "sync_objects")
-    server.close(); return {"devices": 2, "encrypted_sync": True, "team_revocation": True, "entitlement_enforced": allowed, "ciphertext": envelope.ciphertext}
+    # Exercise a real disposable Git fixture and the worktree approval path.
+    from .authorization import Grant
+    from .worktree import State, SyntheticGitAdapter, WorktreeManager
+    fixture = root / "git-fixture"; fixture.mkdir(exist_ok=True)
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=fixture, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "platform@example.com"], cwd=fixture, check=True)
+    subprocess.run(["git", "config", "user.name", "Platform"], cwd=fixture, check=True)
+    (fixture / "README.md").write_text("fixture\n"); subprocess.run(["git", "add", "."], cwd=fixture, check=True); subprocess.run(["git", "commit", "-q", "-m", "fixture"], cwd=fixture, check=True)
+    worktrees = WorktreeManager(root / "worktree-state", adapter=SyntheticGitAdapter(fixture), protected_roots=[fixture])
+    create_grant = Grant(first.principal, "worktree.create", "repository")
+    record = worktrees.create(fixture, task_id="platform-flow", owner=first.principal, grants=[create_grant])
+    (Path(record.path) / "change.txt").write_text("change\n"); subprocess.run(["git", "add", "."], cwd=record.path, check=True); subprocess.run(["git", "commit", "-q", "-m", "change"], cwd=record.path, check=True)
+    worktrees.transition(record.worktree_id, State.READY_FOR_REVIEW); worktrees.preview_merge(record.worktree_id)
+    merge_grant = Grant(first.principal, "worktree.merge", record.worktree_id); worktrees.merge(worktrees.approve(record.worktree_id, operation="merge", actor=first.principal, grants=[merge_grant], target_ref="main"))
+    (worktrees.worktrees_root / "interrupted-unknown").mkdir(); recovery = worktrees.recover()
+    server.close(); return {"devices": 2, "encrypted_sync": True, "team_revocation": True, "entitlement_enforced": allowed, "conflict_detected": conflict_detected, "worktree_merged": True, "recovery_blocked_unknown": any(item.state.value == "BLOCKED" for item in recovery), "audit_events": len(team.audit) + len(billing.audit), "ciphertext": envelope.ciphertext}
