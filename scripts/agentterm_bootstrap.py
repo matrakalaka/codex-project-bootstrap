@@ -12,6 +12,8 @@ unavailable.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import importlib
 import json
@@ -154,6 +156,41 @@ def _state_path(root: Path) -> Path:
     return root / ".agentterm" / "bootstrap-session.json"
 
 
+def _atomic_write_json(path: Path, body: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(body, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+@contextlib.contextmanager
+def _initialization_lock(root: Path):
+    lock_path = root / ".agentterm" / "bootstrap-session.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
+def _initialization_key(identity: str, revision: str, files: dict[str, str]) -> str:
+    material = json.dumps({"identity": identity, "revision": revision, "files": files}, sort_keys=True).encode()
+    return hashlib.sha256(material).hexdigest()
+
+
 class AgentTermBootstrap:
     """Lifecycle facade used by canonical Bootstrap entry points and tests."""
 
@@ -170,25 +207,45 @@ class AgentTermBootstrap:
         settings = self.modules["config"].load_settings(root)
         settings.ensure_home()
         existing_path = _state_path(root)
-        if existing_path.exists():
-            existing = SessionState.load(existing_path)
-            if existing.project_root != str(root) or existing.project_identity != identity:
-                raise LifecycleBlocked("existing AgentTerm session belongs to a different project")
-            if existing.authority_revision != revision or existing.authority_files != files:
-                raise LifecycleBlocked("existing AgentTerm session was initialized under different Bootstrap authority")
-            return existing
-        ledger = self.modules["ledger"].Ledger(settings.ledger_path)
-        session_id = f"bootstrap-session-{uuid.uuid4().hex[:12]}"
-        ledger.append(identity, "session_start", {
-            "bootstrap_session": True,
-            "agentterm_version": version,
-            "authority_revision": revision,
-            "starting_head": head,
-        }, session=session_id, agent="bootstrap", text="Bootstrap AgentTerm session initialized")
-        ledger.close()
-        state = SessionState(SCHEMA, session_id, str(root), identity, revision, files, "READY")
-        existing_path.write_text(json.dumps(asdict(state), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        return state
+        init_key = _initialization_key(identity, revision, files)
+        with _initialization_lock(root):
+            if existing_path.exists():
+                existing = SessionState.load(existing_path)
+                if existing.project_root != str(root) or existing.project_identity != identity:
+                    raise LifecycleBlocked("existing AgentTerm session belongs to a different project")
+                if existing.authority_revision != revision or existing.authority_files != files:
+                    raise LifecycleBlocked("existing AgentTerm session was initialized under different Bootstrap authority")
+                return existing
+            ledger = self.modules["ledger"].Ledger(settings.ledger_path)
+            try:
+                starts = ledger.events(identity, kinds=["session_start"])
+                matching = [event for event in starts if event.body.get("bootstrap_session") and
+                            event.body.get("initialization_key") == init_key]
+                if len(matching) > 1:
+                    raise LifecycleBlocked("ambiguous duplicate Bootstrap initialization events; manual recovery required")
+                if starts and not matching:
+                    raise LifecycleBlocked("ledger contains an interrupted or foreign Bootstrap initialization; manual recovery required")
+                if matching:
+                    event = matching[0]
+                    session_id = event.session
+                    if not isinstance(session_id, str) or event.body.get("authority_revision") != revision:
+                        raise LifecycleBlocked("Bootstrap initialization event is inconsistent; manual recovery required")
+                else:
+                    session_id = f"bootstrap-session-{uuid.uuid4().hex[:12]}"
+                    ledger.append(identity, "session_start", {
+                        "bootstrap_session": True,
+                        "initialization_key": init_key,
+                        "project_root": str(root),
+                        "agentterm_version": version,
+                        "authority_revision": revision,
+                        "authority_files": files,
+                        "starting_head": head,
+                    }, session=session_id, agent="bootstrap", text="Bootstrap AgentTerm session initialized")
+                state = SessionState(SCHEMA, session_id, str(root), identity, revision, files, "READY")
+                _atomic_write_json(existing_path, asdict(state))
+                return state
+            finally:
+                ledger.close()
 
     def _open(self, project_root: Path) -> tuple[SessionState, Any, Any, Any]:
         root, identity, _ = _project_identity(project_root.resolve())
@@ -325,14 +382,15 @@ class AgentTermBootstrap:
             ledger.append(state.project_identity, "bootstrap_plan", {"packet": packet, "agent": agent}, session=state.session_id, agent="bootstrap", text=objective)
             updated = SessionState(**{**asdict(state), "status": "PLANNED", "task_id": packet["task_id"],
                                       "planned_agent": agent, "planned_packet": packet})
-            _state_path(Path(state.project_root)).write_text(json.dumps(asdict(updated), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            _atomic_write_json(_state_path(Path(state.project_root)), asdict(updated))
             return packet
         finally:
             ledger.close()
 
     def execute(self, project_root: Path, *, objective: str, agent: str, mutate: bool,
                 allowed: list[str], forbidden: list[str], verify: list[str],
-                confirm: Callable[[str], bool] | None = None, playbook: str | None = None) -> Any:
+                confirm: Callable[[str], bool] | None = None, playbook: str | None = None,
+                approve_verification: bool = False) -> Any:
         state, settings, ledger, modules = self._open(project_root)
         try:
             planned = state.planned_packet
@@ -352,6 +410,7 @@ class AgentTermBootstrap:
                 task=objective, agent=agent, mutate=mutate, allowed=allowed, forbidden=forbidden,
                 verify=verify, yes=False, playbook=playbook,
                 task_id=planned["task_id"], correlation_id=planned["correlation_id"],
+                verification_approved=approve_verification,
             )
             report = modules["runner"].run_task(settings, ledger, request, confirm=confirm, out=lambda _: None)
             outcome = report.outcome
@@ -361,7 +420,7 @@ class AgentTermBootstrap:
                                       "last_run_session": report.session_id,
                                       "last_outcome": outcome,
                                       "last_receipt": (report.result_packet or {}).get("receipt_id")})
-            _state_path(Path(state.project_root)).write_text(json.dumps(asdict(updated), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            _atomic_write_json(_state_path(Path(state.project_root)), asdict(updated))
             return report
         finally:
             ledger.close()
@@ -387,6 +446,8 @@ class AgentTermBootstrap:
         state, settings, ledger, modules = self._open(project_root)
         try:
             integrity = ledger.verify(state.project_identity)
+            if not integrity.ok:
+                raise LifecycleBlocked("AgentTerm ledger verification failed: " + "; ".join(integrity.problems[:3]))
             approvals = ledger.events(state.project_identity, kinds=[modules["ledger"].APPROVAL], limit=10, desc=True)
             outcomes = ledger.events(state.project_identity, kinds=[modules["ledger"].OUTCOME], limit=5, desc=True)
             return {"state": asdict(state), "ledger_verified": integrity.ok, "events": ledger.count(state.project_identity),
@@ -433,6 +494,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     execute.add_argument("--forbid", action="append", default=[])
     execute.add_argument("--verify", action="append", default=[])
     execute.add_argument("--playbook")
+    execute.add_argument("--approve-verification", action="store_true")
     sub.add_parser("resume")
     sub.add_parser("status")
     sub.add_parser("verify")
@@ -460,7 +522,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "execute":
             result = bridge.execute(args.project_root, objective=args.objective, agent=args.agent, mutate=args.mutate,
                                     allowed=args.allow, forbidden=args.forbid, verify=args.verify, playbook=args.playbook,
-                                    confirm=lambda summary: input(summary + "\nApprove? [y/N] ").strip().lower() in {"y", "yes"})
+                                    confirm=lambda summary: input(summary + "\nApprove? [y/N] ").strip().lower() in {"y", "yes"},
+                                    approve_verification=args.approve_verification)
             result = {"outcome": result.outcome, "session_id": result.session_id, "reasons": result.reasons,
                       "changed_paths": result.changed_paths, "checks": result.checks}
         elif args.command == "resume":

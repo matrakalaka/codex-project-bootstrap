@@ -1,12 +1,13 @@
 # Bootstrap Final Verification
 
-Qualification date: 2026-10-18. Result: **PARTIAL — implementation qualified
-locally; independent approval and external activation remain outstanding**.
+Qualification date: 2026-10-18. Result: **PARTIAL — remediation qualified by
+available local evidence; independent approval and external activation remain
+outstanding**.
 
 ## Evidence
 
 - Release-candidate branch: `release-candidate/agentterm-bootstrap-20261018`.
-- Final local commit: `22d6c49`, including Open Terminal integration.
+- Final local commit: the local remediation commit containing this packet.
 - Baseline: `be9b844bfdaa89f4c695583726b72121a2621e95`.
 - Isolated discovery root: `/Users/admin/codex-bootstrap-four-tool/.bootstrap-tools`.
 - AgentTerm archive SHA-256: `17b6784fe8a96e7667719131209fc44ecefd56010f69479ac1b6124690e5d500`.
@@ -18,14 +19,21 @@ locally; independent approval and external activation remain outstanding**.
   attachment remains unsupported.
 - Active `/Users/admin/.codex/config.toml` was read-only inspected and not
   modified.
+- Remediation tests cover capability authentication/replay, metadata
+  integrity, process-group termination, close failure state, concurrent and
+  interrupted initialization, verification authorization, and corrupt-ledger
+  CLI failure.
 
 ## Tests
 
 Passed during this qualification:
 
-- Launcher installer and synthetic launcher suite: **15 tests passed**.
-- Full Bootstrap regression suite: **56 tests passed**.
-- Vendored AgentTerm suite: **87 tests passed** in an isolated virtual environment.
+- Bootstrap/security regression suite: **68 tests run, 64 passed, 4 skipped**.
+  The four skips are managed-PTY host tests; AF_UNIX bind is denied by this
+  Codex sandbox and therefore remains unverified here.
+- Vendored AgentTerm suite: **NOT RUN**. The previously cited isolated
+  environment was absent and network access prevented installing pytest into a
+  temporary environment; no pass claim is made.
 - The new launcher test verified read-only discovery, explicit two-step
   authorization, session creation, and preservation of a dirty target file.
 - The denied AgentTerm launcher path returned code 2 and created no session.
@@ -42,9 +50,8 @@ python3 scripts/tool_discovery.py --json --tool-root /Users/admin/codex-bootstra
 git diff --check
 ```
 
-The full suite and vendored AgentTerm test suite must be recorded by the
-independent reviewer before publication; no protected-device test is required
-or permitted.
+The vendored AgentTerm suite must be recorded by the independent reviewer
+before publication; no protected-device test is required or permitted.
 
 ## Remaining blockers
 

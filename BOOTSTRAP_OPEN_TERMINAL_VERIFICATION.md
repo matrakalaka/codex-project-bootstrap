@@ -2,15 +2,19 @@
 
 ## Synthetic qualification
 
-- Managed session creation: passed.
-- Explicit approval denial: passed; no input was sent.
-- Selected-session multiline command: passed.
-- Output capture and exit status: passed.
-- Session close and process cleanup: passed.
-- AgentTerm ledger integration and resume: passed.
+- Managed session creation, explicit approval denial, selected-session
+  multiline input, output/status capture, close/cleanup, and AgentTerm ledger
+  integration tests are present but **NOT RUN** in this sandbox because AF_UNIX
+  bind returns `EPERM`.
 - Native mode AppleScript invocation: passed with mocked bridge coverage.
 - Managed PTY `codex --version`: passed; Codex CLI `0.163.0` output and exit
   status were captured in the selected session.
+- Capability, replay, cross-project, metadata-integrity, process-group
+  termination, and failed-close unit coverage: passed.
+- Managed socket integration tests are present but were explicitly skipped in
+  the isolated Codex sandbox because AF_UNIX `bind` returns `EPERM`; this is
+  `NOT_RUN`/unverified host evidence, not a pass claim. The socket location is
+  configurable with `CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR` for approved hosts.
 
 ## Native macOS smoke test
 

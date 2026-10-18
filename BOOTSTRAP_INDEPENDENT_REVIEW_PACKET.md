@@ -1,15 +1,15 @@
 # Bootstrap Independent Review Packet
 
-Review status: **PENDING independent approval**. This packet records evidence
-for a reviewer; it is not a self-issued approval.
+Review status: **PENDING independent approval**. This packet records the
+remediation evidence for a reviewer; it is not a self-issued approval.
 
 ## Scope reviewed
 
 The review target is branch `release-candidate/agentterm-bootstrap-20261018`,
-with final local commit `22d6c49` (preceded by launcher commit `9fb5f5f`),
-based on `be9b844bfdaa89f4c695583726b72121a2621e95`, including the AgentTerm
-facade, vendored source boundary, launcher installer, tool discovery, host
-bridge, and synthetic lifecycle tests.
+at the local remediation candidate commit, based on the AgentTerm-core
+integration and including the AgentTerm facade, vendored source boundary,
+launcher installer, tool discovery, host bridge, and synthetic
+lifecycle/security tests.
 
 ## Control findings
 
@@ -17,12 +17,12 @@ bridge, and synthetic lifecycle tests.
 | --- | --- | --- |
 | Authority precedence | PASS | Launcher resolves authority before Codex or AgentTerm; lifecycle requires verified revision and file hashes. |
 | Approval before edits | PASS | Default launcher is read-only; AgentTerm execution requires a persisted matching plan and interactive confirmation. |
-| Session isolation | PASS | Session state binds project root and normalized Git identity; cross-project opens are rejected. Repeated initialization returns the existing matching session rather than creating a duplicate. |
-| Ledger integrity | PASS | Resume/status verify the hash chain; tamper fixture is rejected. A hash chain is evidence, not a complete security boundary. |
+| Session isolation | PASS with managed-host qualification pending | Session state binds project root and normalized Git identity; concurrent and interrupted initialization are locked/idempotent; terminal capabilities and metadata are session/project-bound. |
+| Ledger integrity | PASS with documented limits | Status, resume, and verify block on corruption; tamper fixture is rejected. A hash chain is evidence, not a complete filesystem security boundary. |
 | Task correlation | PASS | Plan task/correlation IDs are passed into the AgentTerm runner and persisted in session state/ledger. |
 | Git scope and HEAD drift | PASS | Plan captures expected HEAD/scope; execution rejects drift or mismatched scope. |
 | Independent verification | PASS/PENDING review | Verification records and scope checks are implemented; reviewer must inspect that the verifier is independent of the executing agent in deployment use. |
-| Host bridge / Open Terminal | PASS with explicit limits | Managed PTY is allowlisted by session identity, approval-gated, bounded, audited, and captures output/status. Native Terminal.app supports new-tab launch only; arbitrary existing-tab attach and native output capture are unsupported. |
+| Host bridge / Open Terminal | PASS with managed-host evidence pending | Managed PTY now authenticates socket requests, rejects replay, terminates its process group on timeout, and preserves close failure states. Four managed integration tests are unverified because this sandbox denies AF_UNIX bind. Native Terminal.app supports new-tab launch only; arbitrary existing-tab attach and native output capture are unsupported. |
 | Failure recovery | PASS | Denied authorization, missing AgentTerm, invalid authority, corrupted ledger, and interrupted/changed-head paths produce blocked outcomes. |
 | Cross-project contamination | PASS | Synthetic project identity mismatch is rejected. |
 | Backward compatibility | PASS | Existing Bootstrap tests and launcher installer tests remain in the suite. |
@@ -32,10 +32,11 @@ bridge, and synthetic lifecycle tests.
 
 `Terminal.app` and `osascript` were present. A harmless native command was
 launched in a new Terminal.app tab and returned window identifier `9523`.
-Managed PTY synthetic tests passed for approval denial, multiline input,
-output/exit capture, session selection, close, cleanup, and AgentTerm ledger
-events. This does not establish control over arbitrary preexisting tabs or an
-already-running Codex process.
+Managed PTY security/unit tests passed for capability authorization, replay,
+cross-project binding, metadata integrity, process-group termination, and
+failed close. Managed socket integration tests were explicitly skipped because
+AF_UNIX bind returns `EPERM` in this sandbox. This does not establish control
+over arbitrary preexisting tabs or an already-running Codex process.
 
 ## Defect found and corrected during review
 
@@ -46,9 +47,21 @@ requires matching project identity and authority revision/files, and returns
 the existing state; mismatches fail closed. The regression is covered by
 `test_complete_lifecycle_and_fresh_resume`.
 
-Focused result: **2 Open Terminal bridge tests passed**, with the full suite
-covering the lifecycle integration. Full result: **56 Bootstrap tests passed and 87 AgentTerm tests
-passed**.
+Focused result: **68 Bootstrap/security tests, 64 passed and 4 skipped**.
+The vendored AgentTerm pytest suite is **NOT RUN** because its isolated pytest
+environment was absent and network access was unavailable; no pass claim is
+made.
+
+## Remediation review actions
+
+The prior seven findings are addressed in
+`BOOTSTRAP_SECURITY_REMEDIATION_20261018.md`. The reviewer must inspect the
+capability protocol, process-group cancellation, initialization lock/recovery,
+verification authorization policy, status exit behavior, metadata MAC, and
+close-state transitions, then rerun the available tests. Four managed PTY
+integration tests are explicitly unverified in this sandbox because AF_UNIX
+bind returns `EPERM`; they must be rerun on an approved host before claiming
+host-qualified managed PTY evidence.
 
 ## Reviewer actions
 

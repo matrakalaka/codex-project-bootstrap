@@ -16,6 +16,16 @@ delegates to `open_terminal_bridge.py` and appends `terminal_session` and
 `terminal_command` events to the same AgentTerm ledger used for plans,
 approvals, execution, verification, and handoff.
 
+Managed requests use an owner-only capability kept separately from public
+session metadata. The server authenticates the operation, project root,
+request identifier, and capability before accepting `ping`, `submit`, or
+`close`; reused request identifiers are rejected. Metadata changes are
+integrity-checked and atomic. A timed-out command terminates the managed
+session process group, drains no later queued command, and reports
+`TIMED_OUT_TERMINATED` only after reaping succeeds. Close reports `CLOSED`
+only after confirmed termination; otherwise it preserves `CLOSE_FAILED` or
+`UNKNOWN` recovery state.
+
 Native launch is intentionally separate from managed execution:
 
 - supported: opening a new Terminal.app tab with an approved command;

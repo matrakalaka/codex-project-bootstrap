@@ -6,8 +6,10 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from agentterm_bootstrap import AgentTermBootstrap, LifecycleBlocked
 
@@ -111,6 +113,47 @@ class AgentTermBootstrapLifecycleTests(unittest.TestCase):
             with self.assertRaises(LifecycleBlocked):
                 self.bridge(make_agentterm_health(project / "agentterm-health")).initialize(project, {"revision": "short", "files": {}})
 
+    def test_concurrent_initializers_create_one_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            make_project(project)
+            health = make_agentterm_health(project / "agentterm-health")
+            results = []
+            errors = []
+
+            def initialize():
+                try:
+                    results.append(self.bridge(health).initialize(project, AUTHORITY).session_id)
+                except Exception as exc:  # pragma: no cover - assertion below reports it
+                    errors.append(exc)
+
+            threads = [threading.Thread(target=initialize) for _ in range(6)]
+            for thread in threads: thread.start()
+            for thread in threads: thread.join()
+            self.assertEqual(errors, [])
+            self.assertEqual(len(set(results)), 1)
+            connection = sqlite3.connect(project / ".agentterm" / "ledger.db")
+            count = connection.execute("SELECT COUNT(*) FROM events WHERE kind='session_start'").fetchone()[0]
+            connection.close()
+            self.assertEqual(count, 1)
+
+    def test_interrupted_state_write_recovers_without_duplicate_event(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            make_project(project)
+            health = make_agentterm_health(project / "agentterm-health")
+            import agentterm_bootstrap
+            real_write = agentterm_bootstrap._atomic_write_json
+            with patch("agentterm_bootstrap._atomic_write_json", side_effect=RuntimeError("injected crash")):
+                with self.assertRaises(RuntimeError):
+                    self.bridge(health).initialize(project, AUTHORITY)
+            recovered = self.bridge(health).initialize(project, AUTHORITY)
+            self.assertEqual(recovered.status, "READY")
+            connection = sqlite3.connect(project / ".agentterm" / "ledger.db")
+            count = connection.execute("SELECT COUNT(*) FROM events WHERE kind='session_start'").fetchone()[0]
+            connection.close()
+            self.assertEqual(count, 1)
+
     def test_cross_project_resume_and_corrupt_ledger_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             first = Path(directory) / "first"
@@ -134,6 +177,10 @@ class AgentTermBootstrapLifecycleTests(unittest.TestCase):
             connection.commit(); connection.close()
             with self.assertRaises(LifecycleBlocked):
                 bridge.resume(first)
+            status = subprocess.run([sys.executable, str(ROOT / "scripts" / "bootstrap_session.py"),
+                                     "--bootstrap-root", str(ROOT), "--project-root", str(first), "status"],
+                                    capture_output=True, text=True, check=False)
+            self.assertNotEqual(status.returncode, 0)
 
     def test_host_operations_use_existing_fail_closed_bridge(self):
         with tempfile.TemporaryDirectory() as directory:

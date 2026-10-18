@@ -17,10 +17,22 @@ records the exact task packet, agent, scope, verification commands, and
 expected HEAD. `execute` refuses to run unless its request exactly matches the
 persisted plan and the HEAD is unchanged.
 
+Initialization holds an interprocess lock, uses a deterministic
+project/authority idempotency key, recovers a state file from one matching
+ledger event after an interrupted write, and atomically replaces the state
+projection. Duplicate or ambiguous events fail closed. Ledger corruption is a
+blocked precondition for `status`, `resume`, and `verify`; records are never
+silently repaired.
+
 For mutating work, AgentTerm's runner requires explicit human confirmation.
 The integration never sets AgentTerm's `yes` bypass. The runner records the
 approval, invokes the selected adapter, observes Git changes, runs declared
 verification, classifies the outcome, and writes a generated brief.
+
+Verification commands require explicit authorization. They are executed
+without a shell, must resolve to a regular executable, reject shell-control
+syntax, and record authorization and result evidence. A command is not
+trusted merely because it is named `pytest`, `python`, or `git`.
 
 `resume`, `status`, and `verify` validate project identity and ledger. A
 foreign project, corrupted ledger, stale rejected checkpoint, missing agent,

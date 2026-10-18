@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -76,6 +77,7 @@ class RunRequest:
     extra_context: dict[str, str] = field(default_factory=dict)
     task_id: str | None = None
     correlation_id: str | None = None
+    verification_approved: bool = False
 
 
 @dataclass
@@ -95,17 +97,29 @@ class RunReport:
     brief_path: Path | None = None
 
 
-def _run_check(command: str, cwd: str, timeout: int) -> dict[str, Any]:
+def _run_check(command: str, cwd: str, timeout: int, *, authorized: bool) -> dict[str, Any]:
+    base = {"id": command, "description": f"run {command}",
+            "authorization": "APPROVED" if authorized else "NOT_APPROVED"}
+    if not authorized:
+        return {**base, "result": "BLOCKED_PRECONDITION", "exit_code": 126,
+                "output_tail": "verification command requires explicit human authorization"}
     try:
         argv = shlex.split(command)
+        if not argv or any(token in {";", "|", "&", "&&", "||", ">", ">>", "<"} for token in argv):
+            return {**base, "result": "BLOCKED_PRECONDITION", "exit_code": 126,
+                    "output_tail": "verification command contains unsafe shell syntax"}
+        executable = shutil.which(argv[0]) if not Path(argv[0]).is_absolute() else argv[0]
+        if not executable or not Path(executable).is_file():
+            return {**base, "result": "BLOCKED_PRECONDITION", "exit_code": 127,
+                    "output_tail": "verification executable is not a resolved regular file"}
         r = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=timeout)
         tail = ((r.stdout or "") + (r.stderr or ""))[-1500:]
-        return {"id": command, "description": f"run {command}", "result": "PASS" if r.returncode == 0 else "FAIL",
+        return {**base, "result": "PASS" if r.returncode == 0 else "FAIL",
                 "exit_code": r.returncode, "output_tail": tail}
     except subprocess.TimeoutExpired:
-        return {"id": command, "description": f"run {command}", "result": "FAIL", "exit_code": 124, "output_tail": "timed out"}
+        return {**base, "result": "FAIL", "exit_code": 124, "output_tail": "timed out"}
     except (OSError, ValueError) as exc:
-        return {"id": command, "description": f"run {command}", "result": "FAIL", "exit_code": 127, "output_tail": str(exc)}
+        return {**base, "result": "FAIL", "exit_code": 127, "output_tail": str(exc)}
 
 
 def _approval_summary(req: RunRequest, snap: gitinfo.Snapshot, task: dict[str, Any]) -> str:
@@ -162,6 +176,8 @@ def run_task(
             reasons.append("repository has no commits; make an initial commit first")
         if not req.allowed:
             reasons.append("mutating tasks need explicit --allow paths (an empty scope allows nothing)")
+    elif req.verify and not req.verification_approved:
+        reasons.append("verification commands require explicit human authorization")
 
     stale: list[str] = []
     cp_event = ledger.latest(project, L.CHECKPOINT)
@@ -227,6 +243,7 @@ def run_task(
                 reasons += [f"invalid approval: {p}" for p in problems]
             else:
                 task["approval_state"] = "APPROVED"
+                req.verification_approved = True
                 rec(L.APPROVAL, {"packet": approval}, text=f"approved by {approver} via {how}")
         else:
             reasons.append("approval not granted for a mutating task")
@@ -261,7 +278,7 @@ def run_task(
         for v in violations:
             reasons.append(f"scope violation: {v.path} {v.reason}")
         for command in req.verify:
-            check = _run_check(command, snap.root, req.verify_timeout)
+            check = _run_check(command, snap.root, req.verify_timeout, authorized=req.verification_approved)
             checks.append(check)
             rec(L.VERIFICATION, check, text=f"verification {command}: {check['result']}\n{check['output_tail']}")
             if check["result"] != "PASS":
