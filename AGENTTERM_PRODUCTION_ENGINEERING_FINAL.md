@@ -23,7 +23,7 @@ repositories or production infrastructure.
 | OIDC lifecycle | Synthetic provider/client implemented | `oidc.py`, PKCE/signature/rotation tests |
 | Billing adapter | Synthetic provider and ordered events implemented | `billing.py`, webhook/state tests |
 | Runtime/HTTPS contracts | Implemented and tested | `integration.py` |
-| Native macOS Keychain | Implemented, host-qualified build blocked | Security.framework helper, Python wrapper, mock lifecycle tests |
+| Native macOS Keychain | Implemented, native item lifecycle blocked in current process environment | Security.framework helper, Python wrapper, mock lifecycle tests; native mutation returned `errSecParam (-50)` |
 | Hosted multi-instance sync | Not deployed | requires service/database/TLS infrastructure |
 | PostgreSQL distributed store | Implemented, unqualified | `postgres.py`, `deploy/postgres-schema.sql`; no driver/server available |
 
@@ -64,9 +64,11 @@ The PostgreSQL adapter has not been represented as multi-instance evidence:
 Docker is unavailable, no PostgreSQL server is running, and neither psycopg
 driver is installed.
 
-The Security.framework helper and fail-closed wrapper are now implemented, but
-native compilation/qualification is blocked on this host by the Swift
-toolchain/SDK mismatch and module-cache permissions. See
+The Security.framework helper now compiles with an isolated Swift module cache.
+An independent Security.framework probe and the AgentTerm helper both returned
+`errSecParam (-50)` for synthetic generic-password mutation in the current
+process environment, so native item lifecycle remains blocked/unqualified.
+See
 `AGENTTERM_NATIVE_AND_HOSTED_QUALIFICATION.md`.
 
 ## Remaining external gates

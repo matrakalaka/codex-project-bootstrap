@@ -13,27 +13,30 @@ func fail(_ status: OSStatus) -> Never {
 
 let input = FileHandle.standardInput.readDataToEndOfFile()
 guard let request = try? JSONDecoder().decode(Request.self, from: input), !request.service.isEmpty, !request.account.isEmpty else { fail(errSecParam) }
-let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: request.service, kSecAttrAccount as String: request.account, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+let identity: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: request.service as CFString, kSecAttrAccount: request.account as CFString]
 
 switch request.command {
 case "put":
     guard let encoded = request.value, let data = Data(base64Encoded: encoded) else { fail(errSecParam) }
-    var item = base; item[kSecValueData as String] = data
+    // kSecAttrAccessibleThisDeviceOnly is an iOS attribute and returns
+    // errSecParam on macOS. macOS Keychain access is governed by the item ACL
+    // and application code-signing boundary instead.
+    var item = identity; item[kSecValueData] = data
     var status = SecItemAdd(item as CFDictionary, nil)
     if status == errSecDuplicateItem {
-        let update: [String: Any] = [kSecValueData as String: data]
-        status = SecItemUpdate(base as CFDictionary, update as CFDictionary)
+        let update: [CFString: Any] = [kSecValueData: data]
+        status = SecItemUpdate(identity as CFDictionary, update as CFDictionary)
     }
     if status != errSecSuccess { fail(status) }
 case "get":
-    var query = base; query[kSecReturnData as String] = true; query[kSecMatchLimit as String] = kSecMatchLimitOne
+    var query = identity; query[kSecReturnData] = true; query[kSecMatchLimit] = kSecMatchLimitOne
     var result: CFTypeRef?
     let status = SecItemCopyMatching(query as CFDictionary, &result)
     guard status == errSecSuccess, let data = result as? Data else { fail(status) }
     let response = Response(ok: true, value: data.base64EncodedString(), error: nil)
     FileHandle.standardOutput.write(try! JSONEncoder().encode(response))
 case "delete":
-    let status = SecItemDelete(base as CFDictionary)
+    let status = SecItemDelete(identity as CFDictionary)
     if status != errSecSuccess && status != errSecItemNotFound { fail(status) }
 default: fail(errSecParam)
 }

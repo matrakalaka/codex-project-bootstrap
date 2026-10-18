@@ -56,7 +56,14 @@ class PostgresSyncStore:
                     raise SequenceConflict("sequence already contains a different envelope")
                 cursor.execute("SELECT digest FROM agentterm_sequences WHERE device=%s AND project=%s AND sequence=%s FOR UPDATE", (envelope.sender_device, envelope.project_id, envelope.sequence))
                 if cursor.fetchone(): raise SequenceConflict("sequence already contains a different envelope")
-                cursor.execute("SELECT MAX(sequence) FROM agentterm_sequences WHERE device=%s AND project=%s FOR UPDATE", (envelope.sender_device, envelope.project_id)); prior = cursor.fetchone()[0]
+                cursor.execute(
+                    "SELECT sequence FROM agentterm_sequences "
+                    "WHERE device=%s AND project=%s "
+                    "ORDER BY sequence DESC LIMIT 1 FOR UPDATE",
+                    (envelope.sender_device, envelope.project_id),
+                )
+                prior_row = cursor.fetchone()
+                prior = prior_row[0] if prior_row else None
                 if prior is not None and envelope.sequence <= prior - self.replay_window: raise StaleEnvelope("sequence is outside the replay window")
                 cursor.execute("SELECT digest FROM agentterm_objects WHERE project=%s AND object_id=%s ORDER BY sequence DESC LIMIT 1 FOR UPDATE", (envelope.project_id, envelope.object_id)); latest = cursor.fetchone()
                 if latest and envelope.base_digest != latest[0]: raise ConflictError("object has diverged; resolve against the latest envelope")
@@ -71,5 +78,20 @@ class PostgresSyncStore:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT envelope FROM agentterm_objects WHERE project=%s AND sequence>%s ORDER BY sequence", (project, after)); rows = cursor.fetchall()
             return [SyncEnvelope(**(json.loads(row[0]) if isinstance(row[0], str) else row[0])) for row in rows]
+        finally: connection.close()
+
+    def pull_for_device(self, device_id: str, project: str, after: int = 0) -> list[SyncEnvelope]:
+        for key in self.registry._keys.values():
+            if key.owner.device_id == device_id:
+                from .platform import Device
+                return self.pull(Device(device_id, key.owner, key.key_id, key.public_key), project, after)
+        raise AuthorizationDenied("unknown device")
+
+    def health(self) -> dict[str, Any]:
+        connection = self.connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM agentterm_objects"); objects = cursor.fetchone()[0]
+            return {"ok": True, "integrity": "database connection verified", "objects": objects, "protocol": LocalSyncServer.protocol_version}
         finally: connection.close()
 

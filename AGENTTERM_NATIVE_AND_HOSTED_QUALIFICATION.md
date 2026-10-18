@@ -18,6 +18,12 @@ not build the helper because the Swift module cache under `/Users/admin/.cache`
 was not writable and the installed Swift compiler patch level does not match
 the SDK module version. No personal Keychain items were accessed.
 
+After rebuilding with an isolated cache, a minimal independent
+Security.framework probe and the AgentTerm helper both returned
+`errSecParam (-50)` for synthetic generic-password mutation in this execution
+environment. This indicates the current process/keychain boundary is not
+authorized for item mutation; it is not counted as native lifecycle success.
+
 Owner-run qualification after selecting a matching Xcode toolchain:
 
 ```sh
@@ -59,3 +65,6 @@ transactional connection ownership, PostgreSQL primary-key replay constraints,
 No PostgreSQL server or driver is installed in this environment, and Docker is
 not running, so multi-instance consistency is **BLOCKED/UNQUALIFIED**, not
 passed.
+The store exposes the same upload/pull/health surface used by the local HTTP
+service, but no production process entrypoint is enabled without a durable
+trust-registry and secret-management deployment decision.

@@ -48,8 +48,10 @@ the documented macOS command with loopback and AF_UNIX permissions.
 ## Remaining external gates
 
 - Independent cryptographic/security review.
-- Reviewed native macOS Keychain/KMS implementation; no real credentials were
-  accessed.
+- Reviewed native macOS Keychain/KMS implementation; the helper compiles with
+  an isolated module cache, but synthetic native item mutation returned
+  `errSecParam (-50)` in the current process environment. No real credentials
+  or personal Keychain items were accessed.
 - Normal-host loopback and AF_UNIX qualification.
 - Production Git mutation approval and host policy.
 - Authenticated hosted transport, identity/SSO, billing provider, deployment,

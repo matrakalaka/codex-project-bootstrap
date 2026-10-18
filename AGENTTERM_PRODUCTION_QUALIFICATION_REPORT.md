@@ -40,8 +40,10 @@ must be rerun after this commit.
   failed-payment handling, and duplicate-event rejection.
 - Staging acceptance: **BLOCKED/SKIP** in the sandbox because the actual
   loopback bind is denied; the owner-run script is provided for host evidence.
-- Native Keychain compilation: **BLOCKED**, due to host Swift SDK/compiler
-  mismatch and module-cache permissions; mock contract tests pass.
+- Native Keychain helper compilation: **PASS** with an isolated Swift module
+  cache; synthetic Security.framework item mutation: **BLOCKED/UNQUALIFIED**
+  because both an independent probe and the helper returned `errSecParam
+  (-50)` in the current process environment. Mock contract tests pass.
 - PostgreSQL multi-instance qualification: **BLOCKED/SKIP**; no PostgreSQL
   driver/server is available and Docker is not running.
 
