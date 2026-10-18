@@ -64,6 +64,13 @@ class StaleEnvelope(PlatformError):
     pass
 
 
+class SyncTransportError(PlatformError):
+    """Classified failure returned by a sync transport."""
+    def __init__(self, message: str, *, status: int, code: str):
+        super().__init__(message)
+        self.status, self.code = status, code
+
+
 def _require_crypto() -> None:
     if Ed25519PrivateKey is None or AESGCM is None:
         raise CryptoUnavailable("cryptography provider is required; refusing insecure downgrade")
@@ -303,6 +310,13 @@ class LocalSyncServer:
             except Exception:
                 db.rollback(); raise
     def pull(self, device: Device, project: str, after: int = 0) -> list[SyncEnvelope]:
+        if device.status != "active": raise AuthorizationDenied("device is revoked")
+        try:
+            trusted = self.registry.get(device.key_id, device.principal)
+        except PlatformError as exc:
+            raise AuthorizationDenied("device is not trusted") from exc
+        if trusted.owner.device_id != device.device_id or trusted.public_key != device.public_key:
+            raise AuthorizationDenied("device identity binding failed")
         if device.principal.project_id != project: raise AuthorizationDenied("cross-project sync denied")
         with self.connection() as db: rows = db.execute("SELECT envelope FROM objects WHERE project=? AND sequence>? ORDER BY sequence", (project, after)).fetchall()
         return [SyncEnvelope(**json.loads(row[0])) for row in rows]
@@ -382,16 +396,20 @@ class LoopbackSyncService:
                 if length < 0 or length > service.max_body: return self._reply(413, {"error": "payload too large"})
                 try:
                     envelope = SyncEnvelope(**json.loads(self.rfile.read(length))); service.server.upload(envelope); self._reply(200, {"ok": True})
-                except ConflictError as exc: self._reply(409, {"error": str(exc)})
-                except Exception as exc: self._reply(400, {"error": str(exc)[:200]})
+                except ConflictError as exc: self._reply(409, {"error": str(exc)[:200], "code": "conflict"})
+                except SequenceConflict as exc: self._reply(409, {"error": str(exc)[:200], "code": "sequence_conflict"})
+                except StaleEnvelope as exc: self._reply(409, {"error": str(exc)[:200], "code": "stale_envelope"})
+                except AuthorizationDenied as exc: self._reply(403, {"error": str(exc)[:200], "code": "authorization_denied"})
+                except Exception as exc: self._reply(400, {"error": str(exc)[:200], "code": "invalid_request"})
             def do_GET(self):
                 if not self._auth(): return self._reply(401, {"error": "unauthorized"})
                 parsed = urllib.parse.urlparse(self.path)
                 if parsed.path != "/v1/pull": return self._reply(404, {"error": "not found"})
-                query = urllib.parse.parse_qs(parsed.query); project = query.get("project", [""])[0]; after = int(query.get("after", ["0"])[0])
                 try:
+                    query = urllib.parse.parse_qs(parsed.query); project = query.get("project", [""])[0]; after = int(query.get("after", ["0"])[0])
                     envelopes = service.server.pull_for_device(query.get("device", [""])[0], project, after); self._reply(200, {"envelopes": [asdict(item) for item in envelopes]})
-                except Exception as exc: self._reply(400, {"error": str(exc)[:200]})
+                except AuthorizationDenied as exc: self._reply(403, {"error": str(exc)[:200], "code": "authorization_denied"})
+                except Exception as exc: self._reply(400, {"error": str(exc)[:200], "code": "invalid_request"})
         self.http = ThreadingHTTPServer(("127.0.0.1", 0), Handler); self.thread: threading.Thread | None = None
     @property
     def address(self) -> tuple[str, int]: return self.http.server_address
@@ -416,7 +434,10 @@ class LoopbackSyncTransport:
         host, port = self.service.address; request = urllib.request.Request(f"http://{host}:{port}{path}", data=payload, method=method, headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"})
         try:
             with urllib.request.urlopen(request, timeout=5) as response: return json.loads(response.read())
-        except urllib.error.HTTPError as exc: raise PlatformError(exc.read().decode(errors="replace")) from exc
+        except urllib.error.HTTPError as exc:
+            try: body = json.loads(exc.read().decode(errors="replace"))
+            except json.JSONDecodeError: body = {"error": "sync transport rejected request", "code": "http_error"}
+            raise SyncTransportError(str(body.get("error", "sync transport rejected request")), status=exc.code, code=str(body.get("code", "http_error"))) from exc
     def upload(self, envelope: SyncEnvelope) -> None: self._request("POST", "/v1/upload", canonical_bytes(asdict(envelope)))
     def pull(self, device: Device, project: str, after: int = 0) -> list[SyncEnvelope]:
         query = urllib.parse.urlencode({"device": device.device_id, "project": project, "after": after}); return [SyncEnvelope(**item) for item in self._request("GET", "/v1/pull?" + query)["envelopes"]]

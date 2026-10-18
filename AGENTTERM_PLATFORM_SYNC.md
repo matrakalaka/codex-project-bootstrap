@@ -38,3 +38,9 @@ It must not be exposed to a LAN or treated as production TLS.
 SQLite ownership: `LocalSyncServer` and `OfflineQueue` do not share a
 connection across requests or threads. Each operation opens and closes its
 own connection, with WAL, busy timeout, and explicit write transactions.
+
+Download authorization is enforced at the server boundary as well as upload:
+the requesting device must be active, registry-trusted, and bound to the
+presented device ID, principal, and public key. Loopback failures preserve
+HTTP classifications (`403` authorization, `409` conflict/replay, `413`
+oversize, and `400` malformed request) for callers and diagnostics.

@@ -13,6 +13,7 @@ Scope: source and local synthetic qualification in the Phase 1 worktree.
 | Ed25519/AES-GCM | IMPLEMENTED BUT INCOMPLETE | `platform.py`, `test_platform.py` | Maintained `cryptography` provider used; independent review still required. |
 | Private-key storage | IMPLEMENTED BUT INCOMPLETE | `MacOSKeychainStorage`, `FileKeyStorage` | Keychain adapter is explicit; file adapter is development-only. |
 | Encrypted sync | IMPLEMENTED BUT INCOMPLETE | `LocalSyncServer`, `OfflineQueue`, loopback/migration tests | Local opaque service and loopback transport exist; normal-host transport and remote security remain unqualified. |
+| Sync download authorization | IMPLEMENTED AND VERIFIED | `LocalSyncServer.pull`, `test_pull_requires_active_bound_device` | Active trust, principal, device-ID, and public-key binding are required; revoked/forged readers fail closed. |
 | Team authorization | IMPLEMENTED BUT INCOMPLETE | `TeamService`, cross-tenant/revocation tests | In-memory local service; no hosted identity authority. |
 | Entitlements | IMPLEMENTED BUT INCOMPLETE | `EntitlementService` tests | Local mock billing state; no processor or durable billing ledger. |
 | CLI | IMPLEMENTED AND VERIFIED | `platform-demo`, CLI smoke | Demonstration is local-only and reports real workflow results. |

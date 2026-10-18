@@ -2,8 +2,8 @@
 
 ## Local results
 
-- AgentTerm tests: **118 PASS**, **1 SKIP** for sandbox-denied loopback bind.
-- Strict `ResourceWarning`: **118 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- AgentTerm tests: **119 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- Strict `ResourceWarning`: **119 PASS**, **1 SKIP** for sandbox-denied loopback bind.
 - Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
 - AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
 - Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.

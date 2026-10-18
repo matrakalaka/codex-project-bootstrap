@@ -43,3 +43,9 @@ The subsequent concurrent-sequence defect was corrected without removing replay
 checks: the durable sequence table remains unique, exact retry is idempotent,
 altered reuse is rejected, and only unseen sequences inside the bounded replay
 window are accepted out of order.
+
+The local sync read path was also hardened: a pull now requires an active
+trusted key whose principal, device ID, and public key match the presented
+device. HTTP callers receive classified authorization, conflict/replay, size,
+and malformed-request responses. The local test suite covers revoked and
+forged readers; normal-host HTTP qualification remains required.

@@ -32,6 +32,17 @@ def test_aead_sync_is_opaque_signed_and_idempotent(tmp_path):
     server.close()
 
 
+def test_pull_requires_active_bound_device(tmp_path):
+    registry, alice, private, bob, _, server, key = setup_platform(tmp_path)
+    SyncClient(alice, private, key, server).publish("read", b"data", sequence=1)
+    assert len(server.pull(bob, "project")) == 1
+    registry.revoke(bob.key_id)
+    with pytest.raises(PlatformError): server.pull(bob, "project")
+    forged = replace(alice, device_id="not-alice")
+    with pytest.raises(AuthorizationDenied): server.pull(forged, "project")
+    server.close()
+
+
 def test_sync_conflict_and_cursor_rollback_are_fail_closed(tmp_path):
     registry, alice, alice_private, bob, bob_private, server, key = setup_platform(tmp_path)
     one = SyncClient(alice, alice_private, key, server); two = SyncClient(bob, bob_private, key, server)
