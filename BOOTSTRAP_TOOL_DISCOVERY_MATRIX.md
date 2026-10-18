@@ -12,6 +12,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/tool_discovery.py --json
 
 | Tool | Upstream | Actual interface | Bootstrap registration | Fresh-session result |
 | --- | --- | --- | --- | --- |
+| AgentTerm | **Owner-supplied local archive**; SHA-256 `17b6784fe8a96e7667719131209fc44ecefd56010f69479ac1b6124690e5d500` | Python governed CLI, memory ledger, approval/scope runner, Codex adapter | `tooling/agentterm.integration.json`; isolated package source under `vendor/agentterm` | `AVAILABLE` when `.bootstrap-tools/install/agentterm-venv/bin/agentterm` passes `--version`/`--help` |
 | Open Terminal | **BLOCKED** — exact provider/repository was not supplied | Unknown: macOS application, host helper, or MCP | None; no similarly named substitute | `BLOCKED` with source-identity error |
 | MiroFish | `https://github.com/666ghj/MiroFish` at `v0.1.2` | Python/Node application with local services | Manifest only; no MCP claim | `NOT_INSTALLED` |
 | loadersz-core | `https://github.com/lumberjacque/loadersz-core` at `v0.9.0`; npm package `loadersz` | Browser Web Component/library | Manifest only; no MCP claim | `NOT_INSTALLED` |

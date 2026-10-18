@@ -1,0 +1,54 @@
+# agentterm manifest: what this project's terminal should have.
+# `agentterm init` reads this (read-only) and reports gaps; nothing is installed
+# until you run `agentterm install --apply`.
+
+[project]
+default_agent = "codex"
+
+[memory]
+budget_tokens = 16000        # context agentterm assembles per session (not the model's window)
+
+# Any other agent CLI can be declared here and used with `agentterm run --agent myagent`.
+# [agents.myagent]
+# command = ["myagent", "--non-interactive"]
+# stdin = true               # prompt on stdin; if false, put "{prompt}" in command
+# check = ["myagent", "--version"]
+
+[[tool]]
+id = "git"
+kind = "cli"
+required = true
+check = "git --version"
+[tool.install]
+brew = "git"
+winget = "Git.Git"
+
+[[tool]]
+id = "node"
+kind = "cli"
+check = "node --version"
+[tool.install]
+brew = "node"
+winget = "OpenJS.NodeJS.LTS"
+
+[[tool]]
+id = "codex"
+kind = "agent"
+check = "codex --version"
+[tool.install]
+npm = "@openai/codex"
+
+[[tool]]
+id = "claude"
+kind = "agent"
+check = "claude --version"
+[tool.install]
+npm = "@anthropic-ai/claude-code"
+
+# Example project-local MCP server (written to ./.mcp.json, never to global agent config):
+# [[tool]]
+# id = "filesystem"
+# kind = "mcp"
+# [tool.mcp]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "."]

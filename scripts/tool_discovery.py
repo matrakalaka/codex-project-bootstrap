@@ -75,7 +75,25 @@ def discover(tool_root: Path | None = None) -> dict[str, Any]:
             "operational": False,
         }
         status = "NOT_INSTALLED"
-        if tool_id == "open-terminal":
+        if tool_id == "agentterm":
+            isolated_bin = tool_root / "install" / "agentterm-venv" / "bin" / "agentterm" if tool_root else None
+            command = str(isolated_bin) if isolated_bin and isolated_bin.exists() else "agentterm"
+            version = _command_version(command, ["--version"])
+            evidence["source"] = tool.get("source")
+            evidence["archive_sha256"] = tool.get("archive_sha256")
+            evidence["installation_root"] = str(tool_root) if isolated_bin and isolated_bin.exists() else None
+            evidence["version"] = version
+            if version is not None:
+                evidence["available"] = True
+                try:
+                    health = subprocess.run(
+                        [command, "--help"], check=False, capture_output=True, text=True, timeout=5
+                    )
+                    evidence["operational"] = health.returncode == 0 and "governed" in (health.stdout or "").lower()
+                except (OSError, subprocess.TimeoutExpired):
+                    evidence["operational"] = False
+            status = "AVAILABLE" if evidence["operational"] else "NOT_INSTALLED"
+        elif tool_id == "open-terminal":
             evidence["terminal_app_present"] = terminal_app.exists()
             status = "BLOCKED" if tool["status_policy"].startswith("BLOCKED") else "NOT_INSTALLED"
             evidence["reason"] = "exact upstream/provider identity is required"

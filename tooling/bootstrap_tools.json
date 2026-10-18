@@ -2,6 +2,19 @@
   "schema_version": "bootstrap_tools.v1",
   "tools": [
     {
+      "id": "agentterm",
+      "name": "AgentTerm",
+      "kind": "governed_cli_memory_layer",
+      "upstream": null,
+      "source": "vendor/agentterm",
+      "verified_ref": "owner-supplied-local-archive",
+      "archive_sha256": "17b6784fe8a96e7667719131209fc44ecefd56010f69479ac1b6124690e5d500",
+      "runtime": "Python >= 3.11; stdlib runtime, pytest only for development",
+      "mcp": false,
+      "status_policy": "OPTIONAL_ISOLATED_LOCAL_TOOL",
+      "description": "Governed memory, approval, scope, adapter, and audit layer. It is not Open Terminal.app and does not provide an MCP server."
+    },
+    {
       "id": "open-terminal",
       "name": "Open Terminal",
       "kind": "host_application_or_mcp",

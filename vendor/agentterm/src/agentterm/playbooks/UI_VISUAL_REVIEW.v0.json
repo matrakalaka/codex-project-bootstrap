@@ -1,0 +1,24 @@
+{
+  "schema_version": "engineering_playbook.v0",
+  "id": "UI_VISUAL_REVIEW",
+  "version": "0.1.0",
+  "fingerprint": "sha256:5560300a920dd03e818b4aa5d0aa0ef9749096dadf0c7f52b249c8640da15c20",
+  "purpose": "A bounded procedure for reviewing and correcting a confirmed UI visual defect.",
+  "applicability": {"preconditions": ["A bounded UI task packet exists.", "An expected visual target or behavior can be stated."], "excluded_cases": ["Subjective redesign without an approved target.", "Production UI changes without separate authorization."]},
+  "phases": [
+    {"id": "visual_target", "objective": "Establish the expected visual target and behavior.", "required_artifacts": ["target description or reference"], "required_verification": ["target is unambiguous"]},
+    {"id": "authoritative_inspection", "objective": "Inspect the authoritative UI implementation and reproduce the defect.", "required_artifacts": ["implementation location note", "reproduction evidence"], "required_verification": ["defect is observed at a supported viewport where applicable"]},
+    {"id": "bounded_correction", "objective": "Apply only the approved bounded correction.", "required_artifacts": ["scoped UI diff"], "required_verification": ["changed paths remain in scope"]},
+    {"id": "visual_verification", "objective": "Perform required viewport or visual verification and applicable regression checks.", "required_artifacts": ["visual and regression evidence"], "required_verification": ["required checks are externally observed"]},
+    {"id": "stop", "objective": "Report the bounded outcome and stop.", "required_artifacts": ["outcome record"], "required_verification": ["no automatic continuation"]}
+  ],
+  "required_discovery": ["project authority", "repository identity and baseline", "task scope", "authoritative UI implementation", "supported visual verification method"],
+  "required_artifacts": ["visual target", "reproduction evidence", "scoped diff", "verification evidence", "outcome record"],
+  "required_verification": ["required viewport or visual verification where applicable", "regression verification where applicable", "scope and worktree review"],
+  "allowed_capabilities": ["read repository files", "run bounded checks", "edit approved paths", "capture bounded visual evidence when supported"],
+  "human_gates": ["approval of the exact task and resolved procedure before mutation"],
+  "stop_conditions": ["target or evidence is unavailable", "scope or authority diverges", "verification fails", "one verified checkpoint is complete"],
+  "failure_handling": ["record BLOCKED_PRECONDITION, FAILED_AFTER_EXECUTION, or DIVERGENCE as applicable", "do not require unsupported visual tooling"],
+  "prohibited_shortcuts": ["skip target establishment", "treat the playbook as permission", "claim visual completion without evidence", "continue to another task"],
+  "platform_requirements": {"common": ["canonical JSON and SHA-256 support"], "windows": [], "macos": []}
+}

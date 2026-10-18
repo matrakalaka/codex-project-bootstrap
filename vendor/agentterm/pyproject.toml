@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentterm"
+version = "0.1.0"
+description = "Governed memory and audit layer for AI coding agents (Codex, Claude Code, ...). The terminal owns memory, so no agent has to compact."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Matias Almonte" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+agentterm = "agentterm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agentterm = ["playbooks/*.json", "data/*.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

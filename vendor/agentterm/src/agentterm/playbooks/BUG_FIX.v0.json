@@ -1,0 +1,24 @@
+{
+  "schema_version": "engineering_playbook.v0",
+  "id": "BUG_FIX",
+  "version": "0.1.0",
+  "fingerprint": "sha256:2b3d6504c46c3092deb4a9f7b448bec0c07a6fc61541810c419518cc704acbe8",
+  "purpose": "A bounded procedure for diagnosing and correcting a confirmed engineering defect.",
+  "applicability": {"preconditions": ["A bounded task packet exists.", "The defect can be reproduced or evidence can establish it."], "excluded_cases": ["Unbounded redesign or unrelated cleanup.", "Production mutation without separate authorization."]},
+  "phases": [
+    {"id": "establish_evidence", "objective": "Reproduce the defect or record sufficient evidence of the observed failure.", "required_artifacts": ["reproduction or evidence note"], "required_verification": ["observed failure is recorded"]},
+    {"id": "bounded_discovery", "objective": "Locate the bounded root cause and authoritative change location.", "required_artifacts": ["root-cause note", "authoritative location note"], "required_verification": ["scope and authority remain compatible"]},
+    {"id": "approved_change", "objective": "Implement only the approved task scope.", "required_artifacts": ["scoped diff"], "required_verification": ["changed paths remain in scope"]},
+    {"id": "verification_evidence", "objective": "Run targeted and applicable regression verification and record evidence.", "required_artifacts": ["verification evidence"], "required_verification": ["required checks are externally observed"]},
+    {"id": "stop", "objective": "Report the bounded outcome and stop.", "required_artifacts": ["outcome record"], "required_verification": ["no automatic continuation"]}
+  ],
+  "required_discovery": ["project authority", "repository identity and baseline", "task scope", "relevant implementation and tests"],
+  "required_artifacts": ["evidence", "root-cause note", "scoped diff", "verification evidence", "outcome record"],
+  "required_verification": ["targeted verification", "regression verification where applicable", "scope and worktree review"],
+  "allowed_capabilities": ["read repository files", "run bounded checks", "edit approved paths"],
+  "human_gates": ["approval of the exact task and resolved procedure before mutation"],
+  "stop_conditions": ["required evidence is unavailable", "scope or authority diverges", "verification fails", "one verified checkpoint is complete"],
+  "failure_handling": ["record BLOCKED_PRECONDITION, FAILED_AFTER_EXECUTION, or DIVERGENCE as applicable", "do not retry by broadening scope"],
+  "prohibited_shortcuts": ["skip authority discovery", "treat the playbook as permission", "claim completion without external evidence", "continue to another task"],
+  "platform_requirements": {"common": ["canonical JSON and SHA-256 support"], "windows": [], "macos": []}
+}
