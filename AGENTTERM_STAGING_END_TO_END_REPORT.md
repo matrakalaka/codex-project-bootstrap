@@ -25,8 +25,11 @@ restart recovery.
 
 ## Local evidence
 
-- Strict AgentTerm suite after staging additions: 124 passed, 2 sandbox skips
+- Strict AgentTerm suite after staging additions: 126 passed, 2 sandbox skips
   (loopback transport and staging acceptance).
+- Synthetic OIDC and billing suite: 2 passed, covering PKCE, token signatures,
+  JWKS rotation, ordered subscription events, payment failure, and duplicate
+  event rejection.
 - Repository regression: 101 passed, 4 AF_UNIX sandbox skips.
 - Owner normal-host targeted baseline: 30 passed, 0 skipped, 0 failed.
 - Sandbox staging HTTP acceptance: blocked by loopback bind policy; not passed.

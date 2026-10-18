@@ -43,7 +43,8 @@ restart recovery, disposable Git merge, and unknown-state blocking.
 
 ## Qualification
 
-- AgentTerm strict suite: 124 passed, 2 sandbox loopback skips.
+- AgentTerm strict suite: 126 passed, 2 sandbox loopback skips.
+- Synthetic OIDC/billing integration: 2 passed.
 - Staging acceptance test: sandbox-blocked/skipped because loopback bind is
   denied; host execution is provided by `scripts/qualify_agentterm_host.sh`.
 - Repository regression: 101 passed, 4 AF_UNIX sandbox skips.

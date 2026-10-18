@@ -2,8 +2,8 @@
 
 ## Local results
 
-- AgentTerm tests: **124 PASS**, **2 SKIP** for sandbox-denied loopback bind.
-- Strict `ResourceWarning`: **124 PASS**, **2 SKIP** for sandbox-denied loopback bind.
+- AgentTerm tests: **126 PASS**, **2 SKIP** for sandbox-denied loopback bind.
+- Strict `ResourceWarning`: **126 PASS**, **2 SKIP** for sandbox-denied loopback bind.
 - Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
 - AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
 - Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.
@@ -34,6 +34,9 @@ must be rerun after this commit.
 - Integration contracts: **5 PASS**; runtime configuration, OIDC claims,
   signed billing webhooks, replay rejection, and HTTPS transport fail-closed
   behavior.
+- Synthetic OIDC/billing integration: **2 PASS**; PKCE authorization-code
+  exchange, signed token validation, key rotation, ordered subscription state,
+  failed-payment handling, and duplicate-event rejection.
 - Staging acceptance: **BLOCKED/SKIP** in the sandbox because the actual
   loopback bind is denied; the owner-run script is provided for host evidence.
 

@@ -49,3 +49,9 @@ trusted key whose principal, device ID, and public key match the presented
 device. HTTP callers receive classified authorization, conflict/replay, size,
 and malformed-request responses. The local test suite covers revoked and
 forged readers; normal-host HTTP qualification remains required.
+
+Synthetic provider evidence now includes PKCE authorization-code exchange,
+Ed25519 token verification with key rotation, tenant claim binding, signed
+billing events, timestamp/replay rejection, ordered subscription transitions,
+and failed-payment revocation. These are local protocol tests, not approval of
+any external identity or payment provider.
