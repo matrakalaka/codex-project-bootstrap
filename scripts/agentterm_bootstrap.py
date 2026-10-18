@@ -169,6 +169,14 @@ class AgentTermBootstrap:
         self.modules = _load_agentterm(self.bootstrap_root / "vendor" / "agentterm")
         settings = self.modules["config"].load_settings(root)
         settings.ensure_home()
+        existing_path = _state_path(root)
+        if existing_path.exists():
+            existing = SessionState.load(existing_path)
+            if existing.project_root != str(root) or existing.project_identity != identity:
+                raise LifecycleBlocked("existing AgentTerm session belongs to a different project")
+            if existing.authority_revision != revision or existing.authority_files != files:
+                raise LifecycleBlocked("existing AgentTerm session was initialized under different Bootstrap authority")
+            return existing
         ledger = self.modules["ledger"].Ledger(settings.ledger_path)
         session_id = f"bootstrap-session-{uuid.uuid4().hex[:12]}"
         ledger.append(identity, "session_start", {
@@ -179,7 +187,7 @@ class AgentTermBootstrap:
         }, session=session_id, agent="bootstrap", text="Bootstrap AgentTerm session initialized")
         ledger.close()
         state = SessionState(SCHEMA, session_id, str(root), identity, revision, files, "READY")
-        _state_path(root).write_text(json.dumps(asdict(state), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        existing_path.write_text(json.dumps(asdict(state), indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return state
 
     def _open(self, project_root: Path) -> tuple[SessionState, Any, Any, Any]:

@@ -69,6 +69,9 @@ class AgentTermBootstrapLifecycleTests(unittest.TestCase):
 
             state = bridge.initialize(project, AUTHORITY)
             self.assertEqual(state.status, "READY")
+            repeated = bridge.initialize(project, AUTHORITY)
+            self.assertEqual(repeated.session_id, state.session_id)
+            self.assertEqual(repeated.status, "READY")
             plan = bridge.plan(project, objective="perform synthetic change", agent="fake", mutate=True,
                                allowed=["src/**"], forbidden=["secrets/**"], verify=["test -f src/result.txt"],
                                playbook="BUG_FIX")

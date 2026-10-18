@@ -33,7 +33,7 @@ service, UltimateBoxManager checkout, ADB daemon, or device was changed.
 | --- | --- | --- |
 | AgentTerm lifecycle | AVAILABLE in isolated provisioning | `bootstrap_session.py`, ledger/session tests, isolated `--version`/`--help` health check |
 | loadersz-core | AVAILABLE in isolated provisioning | pinned checkout/package and discovery result |
-| MiroFish | INCOMPATIBLE | checkout/frontend present; required `uv` prerequisite absent |
+| MiroFish | INCOMPATIBLE | isolated `uv`/Python 3.11 provisioned; dependency sync is blocked by pinned `torch==2.9.1` lacking a macOS x86_64 wheel |
 | api-anything | NOT_REGISTERED | isolated CLI passes health checks; active Codex config intentionally unchanged |
 | Open Terminal | BLOCKED | no authoritative provider identity; Terminal.app presence is insufficient |
 

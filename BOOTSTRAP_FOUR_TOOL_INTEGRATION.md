@@ -20,13 +20,16 @@ server. Bootstrap therefore does not substitute a similarly named terminal
 MCP project and does not pretend that the installed macOS `Terminal.app` is
 the requested integration. Supply the exact source before implementation.
 
-### MiroFish — NOT_INSTALLED
+### MiroFish — INCOMPATIBLE in the qualified host
 
 The verified upstream is `https://github.com/666ghj/MiroFish`, pinned for this
 registry to `v0.1.2`. Upstream documents a source deployment requiring Node
 18+, Python 3.11–3.12, `uv`, configured API keys, and its own frontend/backend
-services. Bootstrap records it as an application, not an MCP server. Install
-and run it only in a separately approved project/application scope.
+services. Bootstrap records it as an application, not an MCP server. An
+isolated `uv 0.13.1` and Python 3.11.15 were provisioned, but the actual
+backend sync fails on this macOS x86_64 host because the lock pins
+`torch==2.9.1`, which has no compatible x86_64 macOS wheel. No API keys or
+services were started.
 
 ### loadersz-core — NOT_INSTALLED
 
@@ -70,10 +73,10 @@ Provisioning was performed under the ignored repository-local
 `.bootstrap-tools/` root without global installation:
 
 - MiroFish `v0.1.2` / commit `985f89f49acbb44ee14d9d680682c741a44eeebe`:
-  source and frontend dependencies installed; frontend build passed. Full
-  backend activation is `INCOMPATIBLE` in this environment because upstream
-  requires `uv` and Python 3.11–3.12, while `uv` is absent and Python 3.14.3
-  is present. No API keys or services were started.
+  source and frontend dependencies installed; frontend build passed. Isolated
+  backend sync was attempted with `uv 0.13.1` and Python 3.11.15, then failed
+  at the pinned `torch==2.9.1` macOS x86_64 wheel constraint. No API keys or
+  services were started.
 - loadersz-core `v0.9.0` / commit
   `aa2c2defc8cea0d343d9bfbab70aca01ebd322f2`: typecheck passed, 226 tests
   passed, Angular adapter generation passed, and package build passed.

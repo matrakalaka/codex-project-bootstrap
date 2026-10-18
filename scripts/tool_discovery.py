@@ -123,10 +123,34 @@ def discover(tool_root: Path | None = None) -> dict[str, Any]:
             checkout = tool_root / "src" / "MiroFish" if tool_root else None
             evidence["local_checkout"] = bool(checkout and checkout.is_dir())
             evidence["frontend_build"] = bool(checkout and (checkout / "frontend" / "dist").is_dir())
-            evidence["uv_available"] = shutil.which("uv") is not None
-            evidence["python"] = _command_version("python3", ["--version"])
-            if evidence["local_checkout"] and evidence["frontend_build"] and not evidence["uv_available"]:
+            uv_command = tool_root / "install" / "mirofish-uv" / "bin" / "uv" if tool_root else None
+            python_command = tool_root / "install" / "mirofish-uv" / "bin" / "python" if tool_root else None
+            uv_executable = str(uv_command) if uv_command and uv_command.exists() else "uv"
+            python_executable = str(python_command) if python_command and python_command.exists() else "python3"
+            evidence["uv"] = _command_version(uv_executable, ["--version"])
+            evidence["uv_available"] = evidence["uv"] is not None
+            evidence["python"] = _command_version(python_executable, ["--version"])
+            evidence["python_supported"] = evidence["python"] is not None and any(
+                f"Python 3.{minor}." in evidence["python"] for minor in (11, 12)
+            )
+            lockfile = checkout / "backend" / "uv.lock" if checkout else None
+            evidence["backend_lock_present"] = bool(lockfile and lockfile.is_file())
+            evidence["backend_environment"] = bool(checkout and (checkout / "backend" / ".venv").is_dir())
+            evidence["platform_machine"] = platform.machine()
+            torch_platform_block = bool(
+                evidence["backend_lock_present"]
+                and evidence["python_supported"]
+                and platform.system() == "Darwin"
+                and platform.machine() == "x86_64"
+                and "name = \"torch\"" in lockfile.read_text(encoding="utf-8", errors="replace")
+                and "version = \"2.9.1\"" in lockfile.read_text(encoding="utf-8", errors="replace")
+            )
+            if torch_platform_block:
                 status = "INCOMPATIBLE"
+                evidence["reason"] = "MiroFish lock pins torch 2.9.1, which has no macOS x86_64 wheel"
+            elif evidence["local_checkout"] and evidence["frontend_build"] and not evidence["uv_available"]:
+                status = "INCOMPATIBLE"
+                evidence["reason"] = "uv is unavailable"
         elif tool_id == "loadersz-core":
             evidence["expected_entrypoint"] = "npm package: loadersz"
             evidence["node"] = _command_version("node", ["--version"])

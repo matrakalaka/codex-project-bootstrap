@@ -10,7 +10,8 @@ locally; independent approval and external activation remain outstanding**.
 - Isolated discovery root: `/Users/admin/codex-bootstrap-four-tool/.bootstrap-tools`.
 - AgentTerm archive SHA-256: `17b6784fe8a96e7667719131209fc44ecefd56010f69479ac1b6124690e5d500`.
 - Discovery: AgentTerm `AVAILABLE`; loadersz-core `AVAILABLE`; MiroFish
-  `INCOMPATIBLE` because `uv` is unavailable; api-anything `NOT_REGISTERED`
+  `INCOMPATIBLE` after isolated `uv`/Python 3.11 provisioning because its
+  lock pins `torch==2.9.1`, which has no macOS x86_64 wheel; api-anything `NOT_REGISTERED`
   because active Codex configuration was not changed; Open Terminal `BLOCKED`
   because no exact provider identity exists.
 - Active `/Users/admin/.codex/config.toml` was read-only inspected and not
