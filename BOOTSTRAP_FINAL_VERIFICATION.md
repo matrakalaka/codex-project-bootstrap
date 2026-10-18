@@ -56,3 +56,7 @@ or permitted.
 5. Open Terminal remains blocked until the owner supplies an exact supported
    provider or repository.
 6. GitHub publication/merge authorization is not granted.
+
+Publication must precede shell activation because the launcher resolves the
+canonical GitHub `main` checkout and requires `scripts/bootstrap_session.py`
+there.

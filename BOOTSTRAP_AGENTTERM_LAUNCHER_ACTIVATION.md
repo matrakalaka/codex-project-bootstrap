@@ -32,8 +32,8 @@ not claimed to be AgentTerm-powered.
 
 ## Proposed owner-approved installation
 
-After independent review and explicit owner approval, run from the reviewed
-checkout:
+After independent review, publication of the approved candidate to canonical
+GitHub `main`, and explicit owner approval, run from the reviewed checkout:
 
 ```sh
 python3 scripts/install_bootstrap_launcher.py \
@@ -48,4 +48,7 @@ do not use a broad recursive cleanup. Open a new shell or source the file only
 after reviewing the resulting diff.
 
 This procedure requires separate approval because it changes a user shell
-configuration. It is not executed by this release candidate.
+configuration. Installing before the candidate is published would leave the
+read-only path usable but the AgentTerm path would fail closed because the
+launcher verifies that the canonical checkout contains
+`scripts/bootstrap_session.py`. It is not executed by this release candidate.

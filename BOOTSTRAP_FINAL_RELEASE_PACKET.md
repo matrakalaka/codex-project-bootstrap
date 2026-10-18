@@ -131,11 +131,13 @@ both existing servers remain. Restart Codex and rerun discovery.
 
 ## Next executable action
 
-After independent human review approval, owner approval may authorize the
+After independent human review approval, the candidate must first be
+published to canonical GitHub `main`; the launcher intentionally clones and
+verifies that canonical ref. Only then may owner approval authorize the
 launcher installer command documented in
 `BOOTSTRAP_AGENTTERM_LAUNCHER_ACTIVATION.md`, followed separately by the
-api-anything MCP block above. After both changes are verified, publication to
-GitHub `main` requires explicit publication authorization.
+api-anything MCP block above. Installing the launcher before publication would
+leave AgentTerm activation fail-closed.
 
 Rollback: restore the exact timestamped `.zshrc` or `config.toml` backup after
 confirming its path and contents. Do not remove unrelated shell or MCP entries.
