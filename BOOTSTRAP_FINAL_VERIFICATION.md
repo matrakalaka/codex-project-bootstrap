@@ -6,8 +6,7 @@ locally; independent approval and external activation remain outstanding**.
 ## Evidence
 
 - Release-candidate branch: `release-candidate/agentterm-bootstrap-20261018`.
-- Previous final local commit: `289353a`; Open Terminal integration is the
-  current uncommitted review delta.
+- Final local commit: `22d6c49`, including Open Terminal integration.
 - Baseline: `be9b844bfdaa89f4c695583726b72121a2621e95`.
 - Isolated discovery root: `/Users/admin/codex-bootstrap-four-tool/.bootstrap-tools`.
 - AgentTerm archive SHA-256: `17b6784fe8a96e7667719131209fc44ecefd56010f69479ac1b6124690e5d500`.
@@ -25,8 +24,7 @@ locally; independent approval and external activation remain outstanding**.
 Passed during this qualification:
 
 - Launcher installer and synthetic launcher suite: **15 tests passed**.
-- Full Bootstrap regression suite before Open Terminal changes: **54 tests passed**;
-  current suite: **56 tests passed**.
+- Full Bootstrap regression suite: **56 tests passed**.
 - Vendored AgentTerm suite: **87 tests passed** in an isolated virtual environment.
 - The new launcher test verified read-only discovery, explicit two-step
   authorization, session creation, and preservation of a dirty target file.

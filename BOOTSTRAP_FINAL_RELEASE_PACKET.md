@@ -6,8 +6,7 @@ human approval and is not a publication record.
 ## Release identity
 
 - Branch: `release-candidate/agentterm-bootstrap-20261018`
-- HEAD: `289353a` before Open Terminal integration; final Open Terminal changes
-  are pending in the current release-candidate worktree.
+- HEAD: `22d6c49`, including the governed Open Terminal integration.
 - Worktree: `/Users/admin/codex-bootstrap-rc`
 - GitHub `main`: unchanged
 - Active `~/.zshrc`: unchanged
@@ -121,8 +120,8 @@ both existing servers remain. Restart Codex and rerun discovery.
 
 ## Verification evidence
 
-- Bootstrap suite before Open Terminal changes: **54 passed**; current suite:
-  **56 passed**.
+- Bootstrap suite: **56 passed**, including Open Terminal bridge and lifecycle
+  tests.
 - AgentTerm suite: **87 passed**.
 - Launcher authorization suite: **15 passed**.
 - Shell syntax: passed.

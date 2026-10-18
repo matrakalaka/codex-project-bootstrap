@@ -6,7 +6,7 @@ for a reviewer; it is not a self-issued approval.
 ## Scope reviewed
 
 The review target is branch `release-candidate/agentterm-bootstrap-20261018`,
-with final local commit `5633e59` (preceded by launcher commit `9fb5f5f`),
+with final local commit `22d6c49` (preceded by launcher commit `9fb5f5f`),
 based on `be9b844bfdaa89f4c695583726b72121a2621e95`, including the AgentTerm
 facade, vendored source boundary, launcher installer, tool discovery, host
 bridge, and synthetic lifecycle tests.
@@ -46,8 +46,9 @@ requires matching project identity and authority revision/files, and returns
 the existing state; mismatches fail closed. The regression is covered by
 `test_complete_lifecycle_and_fresh_resume`.
 
-Focused result: **7 AgentTerm Bootstrap lifecycle tests passed**. Full result:
-**54 Bootstrap tests passed and 87 AgentTerm tests passed**.
+Focused result: **2 Open Terminal bridge tests passed**, with the full suite
+covering the lifecycle integration. Full result: **56 Bootstrap tests passed and 87 AgentTerm tests
+passed**.
 
 ## Reviewer actions
 
