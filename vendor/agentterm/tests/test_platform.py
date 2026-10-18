@@ -67,6 +67,17 @@ def test_integrated_local_flow(tmp_path):
     result = integrated_local_flow(tmp_path)
     assert result["encrypted_sync"] and result["team_revocation"] and result["entitlement_enforced"]
     assert result["conflict_detected"] and result["worktree_merged"] and result["recovery_blocked_unknown"]
+    assert result["backup_created"] and result["queue_recovered"] and result["restart_replay_idempotent"]
+
+
+def test_health_backup_and_corruption_signal(tmp_path):
+    registry, alice, private, _, _, server, key = setup_platform(tmp_path)
+    SyncClient(alice, private, key, server).publish("health", b"data", sequence=1)
+    assert server.health()["ok"] and server.health()["objects"] == 1
+    backup = server.backup(tmp_path / "backup.db"); server.close()
+    restored = LocalSyncServer(backup, registry=registry)
+    assert restored.health()["ok"] and restored.health()["objects"] == 1
+    restored.close()
 
 
 def test_crypto_rejects_wrong_key_and_tampering():

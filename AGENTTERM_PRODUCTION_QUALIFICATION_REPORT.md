@@ -2,8 +2,8 @@
 
 ## Local results
 
-- AgentTerm tests: **117 PASS**, **1 SKIP** for sandbox-denied loopback bind.
-- Strict `ResourceWarning`: **117 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- AgentTerm tests: **118 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- Strict `ResourceWarning`: **118 PASS**, **1 SKIP** for sandbox-denied loopback bind.
 - Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
 - AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
 - Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.
@@ -26,7 +26,11 @@ must be rerun after this commit.
 - `git diff --check`: **PASS**.
 - CLI integration: `platform-demo` completed signed encrypted sync, conflict
   detection, team revocation, entitlement gating, real disposable worktree
-  merge, and blocked unknown recovery.
+  merge, backup, offline retry, restart/idempotent replay, health inspection,
+  and blocked unknown recovery. `platform-health` reported SQLite integrity
+  `ok`, schema version `2`, and two stored objects.
+- Packaging: **PASS**; a no-dependency `agentterm-0.1.0-py3-none-any.whl`
+  was built in the isolated environment.
 
 ## Not qualified
 

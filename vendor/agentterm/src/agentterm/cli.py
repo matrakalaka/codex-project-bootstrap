@@ -387,6 +387,18 @@ def cmd_platform_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_platform_health(args: argparse.Namespace) -> int:
+    path = Path(args.root) / "sync.db"
+    if not path.exists(): raise Fail(f"sync database not found: {path}")
+    server = platform.LocalSyncServer(path, registry=platform.TrustRegistry())
+    try:
+        health = server.health()
+    finally:
+        server.close()
+    print(json.dumps(health, sort_keys=True))
+    return 0 if health["ok"] else 1
+
+
 # --------------------------------------------------------------------- parser
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="agentterm", description="Install, run and remember for AI coding agents. No compaction: the terminal owns the memory.")
@@ -487,6 +499,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("id", nargs="?")
     sp = add("platform-demo", cmd_platform_demo, "exercise local signed sync, team authorization, revocation and entitlements")
     sp.add_argument("--root", help="local evidence directory (default: temporary directory)")
+    sp = add("platform-health", cmd_platform_health, "check a local sync database integrity and schema")
+    sp.add_argument("root", help="platform evidence directory containing sync.db")
     return p
 
 

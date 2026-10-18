@@ -11,7 +11,7 @@ Branch: `feature/agentterm-worktree-phase1`
 | Phase 1 adversarial worktree tests | PASS (6) | `vendor/agentterm/tests/test_worktree_phase1.py` |
 | Phase 0 security suite | PASS (100 total AgentTerm suite) | included in full AgentTerm run |
 | Full AgentTerm regression | PASS (100) | `vendor/agentterm/tests` |
-| Bootstrap/security/continuity regression | PASS (101), 2 subtests passed | `scripts tests contracts` |
+| Bootstrap/security/continuity regression | PASS (101), 4 AF_UNIX skips, 2 subtests passed | `scripts tests contracts` |
 | Strict ResourceWarning AgentTerm regression | PASS (100) | `-W error::ResourceWarning` |
 | Python compilation | PASS | `python3 -m compileall` |
 | Git diff check | PASS | `git diff --check` |

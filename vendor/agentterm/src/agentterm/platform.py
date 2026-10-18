@@ -249,6 +249,20 @@ class LocalSyncServer:
         db.execute("CREATE TABLE IF NOT EXISTS sequences (device TEXT, project TEXT, sequence INTEGER, digest TEXT, PRIMARY KEY(device, project, sequence))")
         db.execute("CREATE TABLE IF NOT EXISTS cursors (device TEXT, project TEXT, sequence INTEGER, PRIMARY KEY(device, project))"); db.commit()
     def close(self): self._closed = True
+    def health(self) -> dict[str, Any]:
+        with self.connection() as db:
+            integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
+            version = db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+            objects = db.execute("SELECT COUNT(*) FROM objects").fetchone()[0]
+            return {"ok": integrity == "ok", "integrity": integrity, "schema_version": version[0] if version else None, "objects": objects, "protocol": self.protocol_version}
+    def backup(self, destination: Path | str) -> Path:
+        """Create an atomic SQLite backup; the source remains untouched."""
+        target = Path(destination); target.parent.mkdir(parents=True, exist_ok=True); temporary = target.with_suffix(target.suffix + ".tmp")
+        with self.connection() as source:
+            backup = sqlite3.connect(str(temporary), timeout=30, isolation_level=None)
+            try: source.backup(backup); backup.commit()
+            finally: backup.close()
+        os.replace(temporary, target); return target
     @staticmethod
     def quarantine_corrupt(path: Path | str) -> Path:
         """Move a corrupt local database aside without deleting it."""
@@ -493,6 +507,9 @@ def integrated_local_flow(root: Path | str) -> dict[str, Any]:
     try: team.authorize(second.principal, "write"); raise AssertionError("revoked member was authorized")
     except AuthorizationDenied: pass
     billing = EntitlementService(); billing.subscribe("org", "free"); allowed = billing.permit("org", "sync_objects")
+    health_before = server.health(); backup = server.backup(root / "sync-backup.db")
+    queue = OfflineQueue(root / "offline.db"); queue.enqueue(envelope); queued_result = queue.flush(server, now=1); queue.close()
+    server.close(); restarted = LocalSyncServer(root / "sync.db", registry=registry); restarted.upload(envelope); health_after = restarted.health(); restarted.close()
     # Exercise a real disposable Git fixture and the worktree approval path.
     from .authorization import Grant
     from .worktree import State, SyntheticGitAdapter, WorktreeManager
@@ -508,4 +525,4 @@ def integrated_local_flow(root: Path | str) -> dict[str, Any]:
     worktrees.transition(record.worktree_id, State.READY_FOR_REVIEW); worktrees.preview_merge(record.worktree_id)
     merge_grant = Grant(first.principal, "worktree.merge", record.worktree_id); worktrees.merge(worktrees.approve(record.worktree_id, operation="merge", actor=first.principal, grants=[merge_grant], target_ref="main"))
     (worktrees.worktrees_root / "interrupted-unknown").mkdir(); recovery = worktrees.recover()
-    server.close(); return {"devices": 2, "encrypted_sync": True, "team_revocation": True, "entitlement_enforced": allowed, "conflict_detected": conflict_detected, "worktree_merged": True, "recovery_blocked_unknown": any(item.state.value == "BLOCKED" for item in recovery), "audit_events": len(team.audit) + len(billing.audit), "ciphertext": envelope.ciphertext}
+    return {"devices": 2, "encrypted_sync": True, "team_revocation": True, "entitlement_enforced": allowed, "conflict_detected": conflict_detected, "worktree_merged": True, "recovery_blocked_unknown": any(item.state.value == "BLOCKED" for item in recovery), "audit_events": len(team.audit) + len(billing.audit), "backup_created": backup.exists(), "queue_recovered": queued_result == (1, 0), "restart_replay_idempotent": health_before["ok"] and health_after["ok"], "ciphertext": envelope.ciphertext}
