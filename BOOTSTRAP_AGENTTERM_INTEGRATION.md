@@ -75,6 +75,14 @@ hash-chained and redacted. The package's test suite includes ledger tamper
 detection, scope collisions, approvals, command execution, checkpoint
 isolation, and CLI end-to-end fixtures.
 
+The shared isolated qualification root at
+`/Users/admin/codex-bootstrap-four-tool/.bootstrap-tools` was also refreshed
+with a non-global AgentTerm installation. A single fresh discovery pass
+reported: AgentTerm `AVAILABLE`, loadersz-core `AVAILABLE`, MiroFish
+`INCOMPATIBLE` (the upstream runtime prerequisite remains absent),
+api-anything `NOT_REGISTERED` (Codex registration approval remains absent),
+and Open Terminal `BLOCKED`.
+
 The reported overwrite evidence is limited to the archive itself: those three
 paths exist inside the owner-supplied archive. Bootstrap Git history has no
 `test_runner.py` or `pyproject.toml` path history; the only relevant history
