@@ -41,3 +41,16 @@ transport and service isolation, host-qualified AF_UNIX evidence, production
 worktree mutation approval, operational recovery policy, and external provider
 credentials are required before activation. Passing local tests does not grant
 those approvals.
+
+## Qualification checkpoint
+
+At milestone commit `27617b8`:
+
+- AgentTerm suite: **108 passed**, including Phase 0 security, Phase 1
+  worktree, and platform adversarial tests;
+- strict `ResourceWarning`: **108 passed**;
+- Bootstrap/security/continuity regression: **101 passed**, **4 skipped**;
+  every skip is an AF_UNIX bind denied by the host sandbox and remains
+  unqualified;
+- compilation and `git diff --check`: **PASS**;
+- protected Phase 0 and Bootstrap worktrees: unchanged by this mission.
