@@ -6,7 +6,8 @@ human approval and is not a publication record.
 ## Release identity
 
 - Branch: `release-candidate/agentterm-bootstrap-20261018`
-- HEAD: `6aab7f0`
+- HEAD: `289353a` before Open Terminal integration; final Open Terminal changes
+  are pending in the current release-candidate worktree.
 - Worktree: `/Users/admin/codex-bootstrap-rc`
 - GitHub `main`: unchanged
 - Active `~/.zshrc`: unchanged
@@ -114,19 +115,22 @@ both existing servers remain. Restart Codex and rerun discovery.
   qualified here.
 - api-anything: `PARTIAL` / isolated CLI operational; active registration
   pending approval.
-- Open Terminal: `BLOCKED`. AgentTerm plus the host bridge supports bounded,
-  explicitly approved commands, not native Terminal.app control.
+- Open Terminal: `PASS` for managed PTY and native Terminal.app new-tab launch.
+  Arbitrary existing-tab attachment and native output capture remain
+  unsupported and are reported explicitly.
 
 ## Verification evidence
 
-- Bootstrap suite: **54 passed**.
+- Bootstrap suite before Open Terminal changes: **54 passed**; current suite:
+  **56 passed**.
 - AgentTerm suite: **87 passed**.
 - Launcher authorization suite: **15 passed**.
 - Shell syntax: passed.
 - Python compilation: passed.
 - Git diff checks: passed.
 - Tool discovery: AgentTerm `AVAILABLE`, loadersz-core `AVAILABLE`, MiroFish
-  `INCOMPATIBLE`, api-anything `NOT_REGISTERED`, Open Terminal `BLOCKED`.
+  `INCOMPATIBLE`, api-anything `NOT_REGISTERED`, Open Terminal `AVAILABLE` with
+  explicit native limitations.
 - No protected system or device was touched.
 
 ## Next executable action

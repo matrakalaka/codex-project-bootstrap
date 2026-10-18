@@ -31,7 +31,9 @@ MCP activation, production deployment, or Android/device safety.
 
 ## Known boundaries
 
-- Native Open Terminal remains unsupported without an exact provider identity.
+- Native Terminal.app new-tab launch is host-qualified through `osascript`;
+  arbitrary existing-tab attachment and native output capture remain
+  unsupported. Managed PTY execution is the reliable supported alternative.
 - api-anything remains `NOT_REGISTERED` until separately approved global Codex
   configuration is changed.
 - MiroFish remains incompatible with the observed upstream prerequisites.

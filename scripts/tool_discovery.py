@@ -95,8 +95,14 @@ def discover(tool_root: Path | None = None) -> dict[str, Any]:
             status = "AVAILABLE" if evidence["operational"] else "NOT_INSTALLED"
         elif tool_id == "open-terminal":
             evidence["terminal_app_present"] = terminal_app.exists()
-            status = "BLOCKED" if tool["status_policy"].startswith("BLOCKED") else "NOT_INSTALLED"
-            evidence["reason"] = "exact upstream/provider identity is required"
+            evidence["osascript_present"] = shutil.which("osascript") is not None
+            evidence["managed_pty_bridge"] = (ROOT / "scripts" / "open_terminal_bridge.py").is_file()
+            evidence["supported_modes"] = ["managed_pty", "native_terminal_new_tab"]
+            evidence["unsupported_modes"] = ["arbitrary_existing_tab_attach", "native_output_capture"]
+            evidence["reason"] = "native new-tab launch and managed PTY are supported; arbitrary existing-tab control is not"
+            evidence["available"] = bool(evidence["terminal_app_present"] and evidence["osascript_present"] and evidence["managed_pty_bridge"])
+            evidence["operational"] = evidence["available"]
+            status = "AVAILABLE" if evidence["available"] else "BLOCKED"
         elif tool_id == "api-anything":
             isolated_bin = tool_root / "install" / "api-anything" / "node_modules" / ".bin" / "api-anything" if tool_root else None
             command = str(isolated_bin) if isolated_bin and isolated_bin.exists() else "api-anything"

@@ -13,12 +13,13 @@ report `AVAILABLE`, `NOT_INSTALLED`, `NOT_REGISTERED`, `INCOMPATIBLE`, or
 
 ## Tool-specific behavior
 
-### Open Terminal — BLOCKED
+### Open Terminal — AVAILABLE with explicit limits
 
-The request did not identify an upstream repository, provider, or exact MCP
-server. Bootstrap therefore does not substitute a similarly named terminal
-MCP project and does not pretend that the installed macOS `Terminal.app` is
-the requested integration. Supply the exact source before implementation.
+No external provider was identified, so Bootstrap implements this as a native
+capability: managed PTY sessions plus controlled new-tab launch through
+macOS `Terminal.app`/`osascript`. It does not substitute a similarly named
+third-party terminal MCP project. Arbitrary existing-tab attachment and native
+output capture remain unsupported.
 
 ### MiroFish — INCOMPATIBLE in the qualified host
 

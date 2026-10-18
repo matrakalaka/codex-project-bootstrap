@@ -1,7 +1,8 @@
 # Bootstrap AgentTerm Integration
 
-Status: `AVAILABLE` as an isolated local Bootstrap capability; `PARTIAL` for
-the Open Terminal request.
+Status: `AVAILABLE` as an isolated local Bootstrap capability; Open Terminal is
+`AVAILABLE` with managed PTY and native new-tab support, with explicit native
+attachment/output limits.
 
 ## Source and provenance
 
@@ -61,9 +62,9 @@ is safe or required.
 ## Open Terminal finding
 
 AgentTerm is not the native macOS Terminal application, does not launch
-`Terminal.app`, and does not identify an external Open Terminal provider. It
-cannot satisfy that request by name substitution. The Open Terminal capability
-remains `BLOCKED` until its exact provider or upstream source is supplied.
+`Terminal.app` is integrated through the Bootstrap-owned managed PTY/native
+bridge. It does not claim arbitrary existing-tab control or native output
+capture, and those unsupported operations fail closed.
 
 AgentTerm can run an agent CLI from a terminal and can use the Bootstrap
 host-execution bridge for explicitly approved synthetic/host operations. That
@@ -88,7 +89,7 @@ with a non-global AgentTerm installation. A single fresh discovery pass
 reported: AgentTerm `AVAILABLE`, loadersz-core `AVAILABLE`, MiroFish
 `INCOMPATIBLE` (the upstream runtime prerequisite remains absent),
 api-anything `NOT_REGISTERED` (Codex registration approval remains absent),
-and Open Terminal `BLOCKED`.
+and Open Terminal `AVAILABLE` with explicit limits.
 
 The reported overwrite evidence is limited to the archive itself: those three
 paths exist inside the owner-supplied archive. Bootstrap Git history has no

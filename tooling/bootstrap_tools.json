@@ -19,10 +19,10 @@
       "name": "Open Terminal",
       "kind": "host_application_or_mcp",
       "upstream": null,
-      "source_required": true,
+      "source_required": false,
       "mcp": false,
-      "status_policy": "BLOCKED_UNRESOLVED_IDENTITY",
-      "description": "The requested provider/repository is not identified. macOS Terminal.app presence is not treated as the requested integration."
+      "status_policy": "BOOTSTRAP_GOVERNED_NATIVE_AND_PTY",
+      "description": "Bootstrap-governed managed PTY plus native macOS Terminal.app new-tab launch. Arbitrary existing-tab attachment and native output capture are unsupported."
     },
     {
       "id": "mirofish",

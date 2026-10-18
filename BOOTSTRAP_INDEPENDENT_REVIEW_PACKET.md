@@ -22,11 +22,20 @@ bridge, and synthetic lifecycle tests.
 | Task correlation | PASS | Plan task/correlation IDs are passed into the AgentTerm runner and persisted in session state/ledger. |
 | Git scope and HEAD drift | PASS | Plan captures expected HEAD/scope; execution rejects drift or mismatched scope. |
 | Independent verification | PASS/PENDING review | Verification records and scope checks are implemented; reviewer must inspect that the verifier is independent of the executing agent in deployment use. |
-| Host bridge | PASS | Existing bridge is allowlisted, approval-gated, bounded, audited, and fails closed; no unrestricted shell was added. |
+| Host bridge / Open Terminal | PASS with explicit limits | Managed PTY is allowlisted by session identity, approval-gated, bounded, audited, and captures output/status. Native Terminal.app supports new-tab launch only; arbitrary existing-tab attach and native output capture are unsupported. |
 | Failure recovery | PASS | Denied authorization, missing AgentTerm, invalid authority, corrupted ledger, and interrupted/changed-head paths produce blocked outcomes. |
 | Cross-project contamination | PASS | Synthetic project identity mismatch is rejected. |
 | Backward compatibility | PASS | Existing Bootstrap tests and launcher installer tests remain in the suite. |
 | External activation | PENDING | Active `~/.zshrc`, global MCP registration, GitHub publication, and independent approval were intentionally not changed. |
+
+## Open Terminal evidence
+
+`Terminal.app` and `osascript` were present. A harmless native command was
+launched in a new Terminal.app tab and returned window identifier `9523`.
+Managed PTY synthetic tests passed for approval denial, multiline input,
+output/exit capture, session selection, close, cleanup, and AgentTerm ledger
+events. This does not establish control over arbitrary preexisting tabs or an
+already-running Codex process.
 
 ## Defect found and corrected during review
 

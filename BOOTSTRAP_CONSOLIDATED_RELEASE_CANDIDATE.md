@@ -35,7 +35,7 @@ service, UltimateBoxManager checkout, ADB daemon, or device was changed.
 | loadersz-core | AVAILABLE in isolated provisioning | pinned checkout/package and discovery result |
 | MiroFish | INCOMPATIBLE | isolated `uv`/Python 3.11 provisioned; dependency sync is blocked by pinned `torch==2.9.1` lacking a macOS x86_64 wheel |
 | api-anything | NOT_REGISTERED | isolated CLI passes health checks; active Codex config intentionally unchanged |
-| Open Terminal | BLOCKED | no authoritative provider identity; Terminal.app presence is insufficient |
+| Open Terminal | AVAILABLE with explicit limits | Bootstrap-governed managed PTY and native Terminal.app new-tab launch; arbitrary existing-tab attachment and native output capture are unsupported |
 
 The local manifest and discovery matrix retain these states explicitly; no
 optional tool is silently omitted.

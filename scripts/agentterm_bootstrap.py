@@ -220,6 +220,82 @@ class AgentTermBootstrap:
         finally:
             ledger.close()
 
+    def terminal_open(self, project_root: Path, *, mode: str = "managed", approved: bool = False,
+                      command: str = "") -> dict[str, Any]:
+        """Open one explicitly selected managed PTY or native Terminal.app tab."""
+        state, _, ledger, _ = self._open(project_root)
+        try:
+            scripts_dir = str(self.bootstrap_root / "scripts")
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            bridge = importlib.import_module("open_terminal_bridge")
+            try:
+                result = bridge.open_session(Path(state.project_root), mode=mode, approved=approved, command=command)
+            except Exception as exc:
+                ledger.append(state.project_identity, "terminal_session", {
+                    "action": "open", "mode": mode, "approved": approved,
+                    "outcome": "BLOCKED_PRECONDITION", "reason": str(exc),
+                }, session=state.session_id, agent="bootstrap", text="terminal session open blocked")
+                raise
+            ledger.append(state.project_identity, "terminal_session", {
+                "action": "open", "session_id": result["session_id"], "mode": mode,
+                "approved": approved, "output_capture": result.get("output_capture", False),
+            }, session=state.session_id, agent="bootstrap", text=f"terminal session opened: {result['session_id']}")
+            return result
+        finally:
+            ledger.close()
+
+    def terminal_submit(self, project_root: Path, *, session_id: str, text: str,
+                        approved: bool = False, timeout: float = 10) -> dict[str, Any]:
+        """Submit reviewed input only to the selected managed session."""
+        state, _, ledger, _ = self._open(project_root)
+        try:
+            scripts_dir = str(self.bootstrap_root / "scripts")
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            bridge = importlib.import_module("open_terminal_bridge")
+            try:
+                result = bridge.submit(Path(state.project_root), session_id, text, approved=approved, timeout=timeout)
+            except Exception as exc:
+                ledger.append(state.project_identity, "terminal_command", {
+                    "action": "submit", "session_id": session_id, "approved": approved,
+                    "input_sha256": hashlib.sha256(text.encode()).hexdigest(),
+                    "outcome": "BLOCKED_PRECONDITION", "reason": str(exc),
+                }, session=state.session_id, agent="bootstrap", text=f"terminal command blocked: {session_id}")
+                raise
+            ledger.append(state.project_identity, "terminal_command", {
+                "action": "submit", "session_id": session_id, "approved": approved,
+                "input_sha256": hashlib.sha256(text.encode()).hexdigest(),
+                "outcome": result.get("outcome"), "returncode": result.get("returncode"),
+            }, session=state.session_id, agent="bootstrap", text=f"terminal command {result.get('outcome')}: {session_id}")
+            return result
+        finally:
+            ledger.close()
+
+    def terminal_close(self, project_root: Path, *, session_id: str, approved: bool = False) -> dict[str, Any]:
+        """Close only the selected session and record the lifecycle event."""
+        state, _, ledger, _ = self._open(project_root)
+        try:
+            scripts_dir = str(self.bootstrap_root / "scripts")
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            bridge = importlib.import_module("open_terminal_bridge")
+            try:
+                result = bridge.close_session(Path(state.project_root), session_id, approved=approved)
+            except Exception as exc:
+                ledger.append(state.project_identity, "terminal_session", {
+                    "action": "close", "session_id": session_id, "approved": approved,
+                    "outcome": "BLOCKED_PRECONDITION", "reason": str(exc),
+                }, session=state.session_id, agent="bootstrap", text=f"terminal session close blocked: {session_id}")
+                raise
+            ledger.append(state.project_identity, "terminal_session", {
+                "action": "close", "session_id": session_id, "approved": approved,
+                "outcome": result.get("outcome"),
+            }, session=state.session_id, agent="bootstrap", text=f"terminal session closed: {session_id}")
+            return result
+        finally:
+            ledger.close()
+
     def plan(self, project_root: Path, *, objective: str, agent: str, mutate: bool,
              allowed: list[str], forbidden: list[str], verify: list[str], playbook: str | None = None) -> dict[str, Any]:
         state, settings, ledger, modules = self._open(project_root)
@@ -361,6 +437,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub.add_parser("status")
     sub.add_parser("verify")
     sub.add_parser("handoff")
+    terminal_open = sub.add_parser("terminal-open")
+    terminal_open.add_argument("--mode", choices=("managed", "native"), default="managed")
+    terminal_open.add_argument("--startup-command", dest="startup_command", default="")
+    terminal_open.add_argument("--approve", action="store_true")
+    terminal_submit = sub.add_parser("terminal-submit")
+    terminal_submit.add_argument("session_id")
+    terminal_submit.add_argument("--text", required=True)
+    terminal_submit.add_argument("--timeout", type=float, default=10)
+    terminal_submit.add_argument("--approve", action="store_true")
+    terminal_close = sub.add_parser("terminal-close")
+    terminal_close.add_argument("session_id")
+    terminal_close.add_argument("--approve", action="store_true")
     args = parser.parse_args(argv)
     bridge = AgentTermBootstrap(args.bootstrap_root, agentterm_command=args.agentterm)
     try:
@@ -383,6 +471,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             resumed = bridge.resume(args.project_root)
             result = {"ledger_verified": resumed["ledger_verified"], "events": resumed["events"],
                       "findings": resumed["findings"]}
+        elif args.command == "terminal-open":
+            result = bridge.terminal_open(args.project_root, mode=args.mode, approved=args.approve, command=args.startup_command)
+        elif args.command == "terminal-submit":
+            result = bridge.terminal_submit(args.project_root, session_id=args.session_id, text=args.text,
+                                            approved=args.approve, timeout=args.timeout)
+        elif args.command == "terminal-close":
+            result = bridge.terminal_close(args.project_root, session_id=args.session_id, approved=args.approve)
         else:
             result = {"handoff": str(bridge.handoff(args.project_root))}
         print(json.dumps(result if isinstance(result, dict) else asdict(result), indent=2, sort_keys=True, default=str))
