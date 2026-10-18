@@ -44,3 +44,11 @@ Exit codes: `0` PASS, `2` BLOCKED_PRECONDITION, `3` FAILED_AFTER_EXECUTION, `4` 
 - The ledger is tamper-**evident**, not tamper-proof: someone with file access can rewrite it, and `verify` will show where. Anchor the chain head (in a bundle or checkpoint) to detect truncation.
 
 See `docs/ROADMAP.md` for phases and monetization, `docs/FROM_BOOTSTRAP.md` for what was ported from your bootstrap repo.
+
+## Phase 0 security foundations
+
+The additive Phase 0 contracts are documented in `docs/PHASE0_SECURITY.md`.
+They provide identity/trust records, domain-separated signed envelopes,
+deny-by-default authorization, audit provenance, and data-only boundaries for
+future worktree, sync, team, and entitlement implementations. They do not
+activate Git mutation, network sync, billing, or deployment.
