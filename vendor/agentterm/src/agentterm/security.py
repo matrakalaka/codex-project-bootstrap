@@ -187,10 +187,20 @@ class SignedEnvelope:
 
     def verify(self, trust: TrustRecord, *, at: str | None = None, expected_project: str | None = None) -> None:
         if self.schema_version != SCHEMA: raise SecurityError("unsupported envelope schema")
-        if trust.key_id != self.key_id or trust.status != "active" or not trust.usable(at): raise SecurityError("untrusted or expired key")
+        if self.algorithm not in {"Ed25519", "opaque-ciphertext-v0"}: raise SecurityError("unsupported envelope algorithm")
+        if trust.key_id != self.key_id or trust.owner != self.principal or trust.status != "active" or not trust.usable(at): raise SecurityError("untrusted, misbound, or expired key")
         if expected_project is not None and self.principal.project_id != expected_project: raise SecurityError("wrong project")
         if self.expires_at and _time(at or utc_now()) > _time(self.expires_at): raise SecurityError("expired envelope")
-        if not verify(bytes.fromhex(trust.public_key), self.signing_bytes(), bytes.fromhex(self.signature)): raise SecurityError("invalid signature")
+        try:
+            public = bytes.fromhex(trust.public_key)
+            signature = bytes.fromhex(self.signature)
+        except ValueError as exc:
+            raise SecurityError("malformed key or signature encoding") from exc
+        if not verify(public, self.signing_bytes(), signature): raise SecurityError("invalid signature")
+
+    def verify_content(self, content: bytes) -> None:
+        if "sha256:" + hashlib.sha256(content).hexdigest() != self.content_digest:
+            raise SecurityError("content digest does not match envelope")
 
     @classmethod
     def create(cls, *, object_id: str, object_type: str, principal: Principal, key_id: str,
@@ -207,3 +217,20 @@ class SignedEnvelope:
 
 def envelope_digest(envelope: SignedEnvelope) -> str:
     return canonical_hash(envelope.unsigned() | {"signature": envelope.signature})
+
+
+class ReplayGuard:
+    """Process-local replay/idempotency guard; durable sync state belongs later."""
+    def __init__(self) -> None:
+        self._objects: set[str] = set()
+        self._sequence: dict[tuple[str, str], int] = {}
+
+    def accept(self, envelope: SignedEnvelope) -> None:
+        digest = envelope_digest(envelope)
+        if digest in self._objects or envelope.object_id in self._objects:
+            raise SecurityError("replayed envelope")
+        key = (envelope.principal.project_id, envelope.principal.device_id)
+        previous = self._sequence.get(key, -1)
+        if envelope.sequence <= previous:
+            raise SecurityError("replayed or out-of-order sequence")
+        self._objects.add(digest); self._objects.add(envelope.object_id); self._sequence[key] = envelope.sequence

@@ -181,6 +181,22 @@ class Ledger:
     def close(self) -> None:
         self.db.close()
 
+    def __enter__(self) -> "Ledger":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        # Short-lived CLI helpers historically relied on GC. Close defensively
+        # so Python 3.14 does not report an unclosed sqlite handle.
+        try:
+            db = getattr(self, "db", None)
+            if db is not None:
+                db.close()
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------ writes
     def append(
         self,

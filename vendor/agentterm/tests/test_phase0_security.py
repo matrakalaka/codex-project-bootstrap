@@ -1,7 +1,7 @@
 from agentterm.authorization import AuditReceipt, Grant, authorize
 from agentterm.phase0_contracts import Entitlement, SyncObject, TeamMembership, WorktreeLease
-from agentterm.security import (MemoryKeyStore, Principal, SecurityError, SignedEnvelope,
-                                TrustRecord, public_key, sign, verify)
+from agentterm.security import (MemoryKeyStore, Principal, ReplayGuard, SecurityError,
+                                SignedEnvelope, TrustRecord, public_key, sign, verify)
 
 
 def test_ed25519_rfc_key_derivation_and_domain_separated_vector():
@@ -23,6 +23,9 @@ def test_signed_envelope_binds_project_sequence_and_expiry():
                                      created_at="2026-01-01T00:00:00Z", expires_at="2030-01-01T00:00:00Z")
     trust = TrustRecord("device-key-1", principal, public_key(seed).hex(), not_before="2025-01-01T00:00:00Z")
     envelope.verify(trust, at="2026-02-01T00:00:00Z", expected_project="project")
+    envelope.verify_content(b"hello")
+    try: envelope.verify_content(b"changed"); assert False
+    except SecurityError: pass
     try:
         envelope.verify(trust, at="2026-02-01T00:00:00Z", expected_project="other")
         assert False
@@ -32,6 +35,25 @@ def test_signed_envelope_binds_project_sequence_and_expiry():
         envelope.verify(revoked, at="2026-02-01T00:00:00Z")
         assert False
     except SecurityError: pass
+    wrong_owner = TrustRecord("device-key-1", Principal("other", "ws", "project", "device", "user"), public_key(seed).hex())
+    try: envelope.verify(wrong_owner); assert False
+    except SecurityError: pass
+    unknown_algorithm = SignedEnvelope(**{**envelope.__dict__, "algorithm": "none"})
+    try: unknown_algorithm.verify(trust); assert False
+    except SecurityError: pass
+    malformed = SignedEnvelope(**{**envelope.__dict__, "signature": "not-hex"})
+    try: malformed.verify(trust); assert False
+    except SecurityError: pass
+
+
+def test_replay_guard_rejects_duplicates_and_old_sequences():
+    seed = bytes(range(32)); p = Principal("o", "w", "p", "d")
+    e1 = SignedEnvelope.create(object_id="1", object_type="x", principal=p, key_id="k", seed=seed, content=b"1", sequence=1)
+    e0 = SignedEnvelope.create(object_id="0", object_type="x", principal=p, key_id="k", seed=seed, content=b"0", sequence=0)
+    guard = ReplayGuard(); guard.accept(e1)
+    for item in (e1, e0):
+        try: guard.accept(item); assert False
+        except SecurityError: pass
 
 
 def test_keystore_never_exposes_seed_in_contract():
@@ -48,6 +70,9 @@ def test_authorization_is_deny_by_default_and_receipt_is_provenance():
     assert allowed.allowed and allowed.grant_id == "g1"
     receipt = AuditReceipt("r", "req", actor, "write", "memory/1", allowed, "accepted", {"source": "local"})
     assert receipt.digest().startswith("sha256:") and receipt.as_dict()["decision"] is True
+    receipt.verify(receipt.digest(), previous_digest=None)
+    try: receipt.verify("sha256:" + "0" * 64); assert False
+    except ValueError: pass
 
 
 def test_phase0_boundary_contracts_fail_closed():

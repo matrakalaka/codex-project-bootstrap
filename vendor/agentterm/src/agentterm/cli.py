@@ -292,12 +292,17 @@ def cmd_verify(args: argparse.Namespace) -> int:
 def cmd_doctor(args: argparse.Namespace) -> int:
     settings, ledger, snap = _open(args)
     print(f"agentterm {__version__}   python {sys.version.split()[0]}   sqlite {sqlite3.sqlite_version}")
+    probe = None
     try:
-        sqlite3.connect(":memory:").execute("create virtual table t using fts5(x)")
+        probe = sqlite3.connect(":memory:")
+        probe.execute("create virtual table t using fts5(x)")
         print("ok    sqlite FTS5 available")
     except sqlite3.Error:
         print("FAIL  sqlite FTS5 missing (retrieval will not work)")
         return 1
+    finally:
+        if probe is not None:
+            probe.close()
     print(f"{'ok  ' if snap.is_git else 'warn'}  git repository: {snap.identity}")
     print(f"ok    manifest: {settings.manifest_path or 'none (built-in defaults)'}")
     for name in settings.agent_names():

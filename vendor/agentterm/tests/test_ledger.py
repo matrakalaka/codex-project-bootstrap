@@ -16,6 +16,13 @@ def test_append_chains_and_verifies(ledger):
     assert ledger.verify().checked == 2
 
 
+def test_ledger_context_manager_closes_connection(tmp_path):
+    with L.Ledger(tmp_path / "context.db") as led:
+        led.append("project", "note", {"text": "closed"})
+    with pytest.raises(sqlite3.ProgrammingError):
+        led.count()
+
+
 def test_chains_are_per_project(ledger):
     ledger.append("p1", "note", {"text": "a"})
     c = ledger.append("p2", "note", {"text": "b"})

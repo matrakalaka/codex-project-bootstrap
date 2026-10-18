@@ -57,3 +57,9 @@ class AuditReceipt:
                 "created_at": self.created_at or self.decision.evaluated_at}
 
     def digest(self) -> str: return canonical_hash(self.as_dict())
+
+    def verify(self, expected_digest: str, *, previous_digest: str | None = None) -> None:
+        if previous_digest is not None and self.previous_digest != previous_digest:
+            raise ValueError("audit receipt predecessor mismatch")
+        if self.digest() != expected_digest:
+            raise ValueError("audit receipt digest mismatch")
