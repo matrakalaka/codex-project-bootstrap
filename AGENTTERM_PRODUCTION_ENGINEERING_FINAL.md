@@ -23,7 +23,7 @@ repositories or production infrastructure.
 | OIDC lifecycle | Synthetic provider/client implemented | `oidc.py`, PKCE/signature/rotation tests |
 | Billing adapter | Synthetic provider and ordered events implemented | `billing.py`, webhook/state tests |
 | Runtime/HTTPS contracts | Implemented and tested | `integration.py` |
-| Native macOS Keychain | Not activated; external host/API review gate | fail-closed existing adapter |
+| Native macOS Keychain | Implemented, host-qualified build blocked | Security.framework helper, Python wrapper, mock lifecycle tests |
 | Hosted multi-instance sync | Not deployed | requires service/database/TLS infrastructure |
 | PostgreSQL distributed store | Implemented, unqualified | `postgres.py`, `deploy/postgres-schema.sql`; no driver/server available |
 
