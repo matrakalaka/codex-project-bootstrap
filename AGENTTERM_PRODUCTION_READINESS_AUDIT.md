@@ -45,6 +45,16 @@ protected separately by a lock.
 The fix preserves schema migration, idempotency, replay protection, cursor
 monotonicity, tenant/device checks, and corruption quarantine.
 
+## Concurrent sequence failure and correction
+
+The next normal-host failure occurred in `test_loopback_transport_is_authenticated_and_bounded` when one device concurrently submitted explicit sequences 2, 3, 4, and 5. The prior server rule rejected an arriving sequence whenever it was below the highest sequence already observed. That was an incorrect arrival-order assumption, not a replay proof.
+
+The server now accepts unseen sequences within a bounded durable per-device
+window, while the unique sequence table rejects altered reuse and exact
+duplicates remain idempotent. Sequences outside the window fail as stale.
+Controlled out-of-order, duplicate, altered, restart, timeout-retry, and
+concurrent tests cover the contract.
+
 ## Conclusion
 
 The local implementation is suitable for independent review. It is not

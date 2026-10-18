@@ -56,6 +56,14 @@ class ConflictError(PlatformError):
     pass
 
 
+class SequenceConflict(PlatformError):
+    pass
+
+
+class StaleEnvelope(PlatformError):
+    pass
+
+
 def _require_crypto() -> None:
     if Ed25519PrivateKey is None or AESGCM is None:
         raise CryptoUnavailable("cryptography provider is required; refusing insecure downgrade")
@@ -207,8 +215,9 @@ class LocalSyncServer:
     """Opaque local service: SQLite stores ciphertext only, never plaintext."""
     protocol_version = "agentterm.sync.v1"
     max_envelope_bytes = 1 << 20
-    def __init__(self, path: Path | str, *, registry: TrustRegistry, rate_limit: int = 100):
-        self.path = Path(path); self.registry = registry; self.rate_limit = rate_limit; self._upload_times: list[float] = []; self._rate_lock = threading.Lock(); self._closed = False; self._initialize_schema()
+    replay_window = 256
+    def __init__(self, path: Path | str, *, registry: TrustRegistry, rate_limit: int = 100, replay_window: int | None = None):
+        self.path = Path(path); self.registry = registry; self.rate_limit = rate_limit; self.replay_window = replay_window or self.replay_window; self._upload_times: list[float] = []; self._rate_lock = threading.Lock(); self._closed = False; self._initialize_schema()
     def _connect(self) -> sqlite3.Connection:
         if self._closed: raise PlatformError("sync server is closed")
         connection = sqlite3.connect(str(self.path), timeout=30, isolation_level=None)
@@ -267,12 +276,14 @@ class LocalSyncServer:
                 existing = db.execute("SELECT digest FROM objects WHERE project=? AND object_id=? AND sender_device=? AND sequence=?", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence)).fetchone()
                 if existing:
                     if existing[0] == envelope.digest(): db.commit(); return
-                    raise ConflictError("sequence already contains a different envelope")
+                    raise SequenceConflict("sequence already contains a different envelope")
+                seen = db.execute("SELECT digest FROM sequences WHERE device=? AND project=? AND sequence=?", (envelope.sender_device, envelope.project_id, envelope.sequence)).fetchone()
+                if seen: raise SequenceConflict("sequence already contains a different envelope")
                 latest = db.execute("SELECT envelope, digest FROM objects WHERE project=? AND object_id=? ORDER BY rowid DESC LIMIT 1", (envelope.project_id, envelope.object_id)).fetchone()
                 if latest and envelope.base_digest != latest[1]: raise ConflictError("object has diverged; resolve against the latest envelope")
                 raw = json.dumps(asdict(envelope), sort_keys=True)
                 prior = db.execute("SELECT MAX(sequence) FROM sequences WHERE device=? AND project=?", (envelope.sender_device, envelope.project_id)).fetchone()[0]
-                if prior is not None and envelope.sequence <= prior: raise PlatformError("replayed or non-increasing device sequence")
+                if prior is not None and envelope.sequence <= prior - self.replay_window: raise StaleEnvelope("sequence is outside the replay window")
                 db.execute("INSERT INTO sequences VALUES(?,?,?,?)", (envelope.sender_device, envelope.project_id, envelope.sequence, envelope.digest()))
                 db.execute("INSERT INTO objects VALUES(?,?,?,?,?,?)", (envelope.project_id, envelope.object_id, envelope.sender_device, envelope.sequence, raw, envelope.digest())); db.commit()
             except Exception:

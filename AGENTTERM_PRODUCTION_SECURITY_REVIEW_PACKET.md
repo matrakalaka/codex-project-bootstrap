@@ -38,3 +38,8 @@ shared server connection. Upload, pull, cursor, migration, and queue operations
 now own short-lived connections and close them deterministically. Concurrent
 direct storage tests pass; the actual HTTP-thread test remains host-dependent
 and must be rerun on normal macOS.
+
+The subsequent concurrent-sequence defect was corrected without removing replay
+checks: the durable sequence table remains unique, exact retry is idempotent,
+altered reuse is rejected, and only unseen sequences inside the bounded replay
+window are accepted out of order.

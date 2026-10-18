@@ -6,8 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from agentterm.platform import (AuthorizationDenied, ConflictError, CryptoProvider, EntitlementService,
-                                FileKeyStorage, LocalSyncServer, LoopbackSyncService, LoopbackSyncTransport, OfflineQueue, PlatformError, SyncClient, TeamService, TrustRegistry,
-                                create_device, integrated_local_flow)
+                                FileKeyStorage, LocalSyncServer, LoopbackSyncService, LoopbackSyncTransport, OfflineQueue, PlatformError, SequenceConflict, StaleEnvelope, SyncClient, TeamService, TrustRegistry,
+                                _b64, create_device, integrated_local_flow)
 
 
 def setup_platform(tmp_path):
@@ -153,6 +153,46 @@ def test_per_operation_connections_support_concurrent_storage_access(tmp_path):
     with pytest.raises(PlatformError):
         with server.connection():
             pass
+
+
+def test_bounded_out_of_order_arrival_and_sequence_classification(tmp_path):
+    registry, alice, private, _, _, server, key = setup_platform(tmp_path)
+    class Recorder:
+        def __init__(self): self.items = []
+        def upload(self, item): self.items.append(item)
+    recorder = Recorder(); client = SyncClient(alice, private, key, recorder)
+    envelopes = [client.publish("ordered-" + str(sequence), b"v" + str(sequence).encode(), sequence=sequence) for sequence in range(1, 6)]
+    for envelope in [envelopes[0], envelopes[4], envelopes[1], envelopes[3], envelopes[2]]: server.upload(envelope)
+    server.close()
+    window_root = tmp_path / "window"; window_root.mkdir()
+    registry, alice, private, _, _, server, key = setup_platform(window_root)
+    server.replay_window = 2
+    recorder = Recorder(); client = SyncClient(alice, private, key, recorder)
+    envelopes = [client.publish("window-" + str(sequence), b"v" + str(sequence).encode(), sequence=sequence) for sequence in range(1, 5)]
+    server.upload(envelopes[0]); server.upload(envelopes[3])
+    with pytest.raises(StaleEnvelope): server.upload(envelopes[1])
+    altered_unsigned = replace(envelopes[3], ciphertext="altered", signature="")
+    altered = replace(altered_unsigned, signature=_b64(CryptoProvider.sign(private, altered_unsigned.signing_bytes())))
+    with pytest.raises(SequenceConflict): server.upload(altered)
+    server.close()
+
+
+def test_replay_state_survives_restart_and_uncertain_retry_is_idempotent(tmp_path):
+    registry, alice, private, _, _, server, key = setup_platform(tmp_path)
+    class Uncertain:
+        def upload(self, item):
+            server.upload(item)
+            raise TimeoutError("response lost after commit")
+    queue = OfflineQueue(tmp_path / "retry.db"); client = SyncClient(alice, private, key, server)
+    envelope = client.publish("retry", b"retry", sequence=1)
+    queue.enqueue(envelope)
+    assert queue.flush(Uncertain(), now=0) == (0, 1)
+    assert queue.flush(server, now=2) == (1, 0)
+    server.close(); restarted = LocalSyncServer(tmp_path / "sync.db", registry=registry)
+    restarted.upload(envelope)
+    altered = replace(envelope, ciphertext="different")
+    with pytest.raises(PlatformError): restarted.upload(altered)
+    queue.close(); restarted.close()
 
 
 def test_corrupt_database_is_quarantined_not_deleted(tmp_path):
