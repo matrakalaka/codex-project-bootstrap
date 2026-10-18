@@ -15,7 +15,7 @@ packet, or conversation transcript.
 **Repository:** `/Users/admin/codex-bootstrap-four-tool`
 **Remote:** `https://github.com/matrakalaka/codex-project-bootstrap`
 **Branch:** `integration/four-tool-sandbox-20261017`
-**Current observed HEAD:** `825431647280f4c19a428b00e2639d23d6305519`
+**Current observed HEAD:** `f3c3ea400413f8ded435b55a25ebf61bfd53fd21`
 **Status:** PARTIAL — Bootstrap integration is implemented and verified;
 Open Terminal identity remains blocked; isolated provisioning is qualified;
 active api-anything Codex registration remains approval-gated.
