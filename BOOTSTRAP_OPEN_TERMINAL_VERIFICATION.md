@@ -9,6 +9,8 @@
 - Session close and process cleanup: passed.
 - AgentTerm ledger integration and resume: passed.
 - Native mode AppleScript invocation: passed with mocked bridge coverage.
+- Managed PTY `codex --version`: passed; Codex CLI `0.163.0` output and exit
+  status were captured in the selected session.
 
 ## Native macOS smoke test
 

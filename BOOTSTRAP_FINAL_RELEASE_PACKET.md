@@ -124,6 +124,7 @@ both existing servers remain. Restart Codex and rerun discovery.
   tests.
 - AgentTerm suite: **87 passed**.
 - Launcher authorization suite: **15 passed**.
+- Managed PTY Codex CLI smoke: **passed** (`codex-cli 0.163.0`, exit 0).
 - Shell syntax: passed.
 - Python compilation: passed.
 - Git diff checks: passed.
