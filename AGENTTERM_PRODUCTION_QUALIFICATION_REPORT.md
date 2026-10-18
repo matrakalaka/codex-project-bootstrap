@@ -2,8 +2,8 @@
 
 ## Local results
 
-- AgentTerm tests: **119 PASS**, **1 SKIP** for sandbox-denied loopback bind.
-- Strict `ResourceWarning`: **119 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- AgentTerm tests: **124 PASS**, **1 SKIP** for sandbox-denied loopback bind.
+- Strict `ResourceWarning`: **124 PASS**, **1 SKIP** for sandbox-denied loopback bind.
 - Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
 - AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
 - Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.
@@ -31,6 +31,9 @@ must be rerun after this commit.
   `ok`, schema version `2`, and two stored objects.
 - Packaging: **PASS**; a no-dependency `agentterm-0.1.0-py3-none-any.whl`
   was built in the isolated environment.
+- Integration contracts: **5 PASS**; runtime configuration, OIDC claims,
+  signed billing webhooks, replay rejection, and HTTPS transport fail-closed
+  behavior.
 
 ## Not qualified
 

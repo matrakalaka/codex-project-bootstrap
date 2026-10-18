@@ -32,11 +32,14 @@ schema version.
 
 ## Qualification evidence
 
-- AgentTerm strict suite: 119 passed, 1 loopback-bind skip.
+- AgentTerm strict suite: 124 passed, 1 loopback-bind skip.
 - Bootstrap/security/continuity suite: 101 passed, 4 AF_UNIX skips.
 - Combined host-targeted command in sandbox: 23 passed, 5 explicit skips.
 - Compilation, wheel packaging, CLI smoke, health inspection, and Git diff
   checks: passed.
+- Provider integration contracts: runtime configuration, OIDC claim checks,
+  signed billing webhook verification, replay rejection, and HTTPS transport
+  validation passed.
 
 Skipped socket tests are not normal-host qualification. The owner must rerun
 the documented macOS command with loopback and AF_UNIX permissions.

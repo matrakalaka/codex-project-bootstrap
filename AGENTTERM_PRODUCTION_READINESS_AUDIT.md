@@ -14,6 +14,7 @@ Scope: source and local synthetic qualification in the Phase 1 worktree.
 | Private-key storage | IMPLEMENTED BUT INCOMPLETE | `MacOSKeychainStorage`, `FileKeyStorage` | Keychain adapter is explicit; file adapter is development-only. |
 | Encrypted sync | IMPLEMENTED BUT INCOMPLETE | `LocalSyncServer`, `OfflineQueue`, loopback/migration tests | Local opaque service and loopback transport exist; normal-host transport and remote security remain unqualified. |
 | Sync download authorization | IMPLEMENTED AND VERIFIED | `LocalSyncServer.pull`, `test_pull_requires_active_bound_device` | Active trust, principal, device-ID, and public-key binding are required; revoked/forged readers fail closed. |
+| Provider integration contracts | IMPLEMENTED AND VERIFIED | `integration.py`, `test_integration.py` | Strict runtime configuration, OIDC claim validation, signed webhook replay checks, and HTTPS transport contract; live providers remain external. |
 | Team authorization | IMPLEMENTED BUT INCOMPLETE | `TeamService`, cross-tenant/revocation tests | In-memory local service; no hosted identity authority. |
 | Entitlements | IMPLEMENTED BUT INCOMPLETE | `EntitlementService` tests | Local mock billing state, positive-only metering, and seat accounting; no processor or durable billing ledger. |
 | CLI | IMPLEMENTED AND VERIFIED | `platform-demo`, CLI smoke | Demonstration is local-only and reports real workflow results. |

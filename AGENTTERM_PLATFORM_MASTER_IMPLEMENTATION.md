@@ -56,4 +56,6 @@ At the current hardening checkpoint:
 - local acceptance: signed/encrypted sync, conflict handling, team revocation,
   entitlement gating, disposable worktree merge, backup, offline retry,
   restart/idempotent replay, health inspection, and blocked unknown recovery;
+- provider-independent runtime, OIDC, signed billing-webhook, and HTTPS
+  transport contracts with fail-closed validation;
 - protected Phase 0 and Bootstrap worktrees: unchanged by this mission.

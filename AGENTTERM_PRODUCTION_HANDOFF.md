@@ -9,6 +9,11 @@ existing development worktree. The local CLI demonstration is real and uses
 temporary Git fixtures, encrypted signed envelopes, team authorization,
 revocation, entitlements, conflict detection, and conservative recovery.
 
+Provider-independent integration contracts are also implemented for strict
+runtime configuration, OIDC claim validation, signed billing webhooks, and an
+HTTPS-only sync transport. They are testable locally but are not evidence of a
+live identity provider, billing account, hosted service, or deployment.
+
 ## Owner-authorized next actions
 
 1. Run the root regression and AF_UNIX tests on a normal supported macOS host
