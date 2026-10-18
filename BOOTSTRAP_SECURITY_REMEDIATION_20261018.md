@@ -76,14 +76,15 @@ was absent and network access prevented temporary installation.
 
 The first owner-host verification found all four managed sessions failing
 during readiness before their security assertions ran. Root cause was an
-overlong macOS AF_UNIX socket path caused by embedding the full session ID in
-the socket filename; the server's stderr was also discarded, hiding the bind
-failure. The bridge now uses a short SHA-256 digest of project identity and
-session identity for the socket basename, while retaining the exact path in
-integrity-protected metadata. Startup failures include bounded child stderr
-and exit status without exposing capabilities or command input. The added
-socket-name regression test passes; host AF_UNIX integration remains to be
-rerun after this fix.
+overlong macOS AF_UNIX absolute path; shortening only the basename was not
+sufficient when the configured temporary directory was deep. The bridge now
+uses a validated owner-only runtime root and collision-resistant per-session
+directory, independent of the project path, measures the complete encoded
+address, rejects symlink/permission substitutions, and refuses collisions.
+Startup failures include bounded child stderr, exit status, and path length
+without exposing capabilities or command input. Startup cleanup closes pipes,
+reaps children, and removes only owned socket artifacts. Host AF_UNIX
+integration remains to be rerun after this complete fix.
 
 The supported path remains managed PTY or approved native new-tab launch.
 Native Terminal.app output capture and arbitrary existing-tab attachment remain

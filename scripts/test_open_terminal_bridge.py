@@ -1,4 +1,5 @@
 import json
+import io
 import os
 import stat
 import sqlite3
@@ -61,6 +62,10 @@ class OpenTerminalBridgeTests(unittest.TestCase):
         if not self.managed_socket_available and self._testMethodName not in {
             "test_native_mode_reports_new_tab_without_claiming_capture",
             "test_managed_socket_name_stays_within_macos_path_limit",
+            "test_deep_project_path_does_not_enter_socket_address",
+            "test_runtime_symlink_is_rejected",
+            "test_concurrent_runtime_paths_are_distinct",
+            "test_startup_diagnostics_are_bounded_and_non_secret",
         }:
             self.skipTest("host sandbox denies AF_UNIX bind; managed PTY evidence is unverified")
 
@@ -166,7 +171,52 @@ class OpenTerminalBridgeTests(unittest.TestCase):
                     Path(directory) / "project", "terminal-" + ("a" * 32)
                 )
             self.assertLessEqual(len(socket_path.name.encode()), 40)
-            self.assertRegex(socket_path.name, r"^cbs-[0-9a-f]{24}\.sock$")
+            self.assertEqual(socket_path.name, "session.sock")
+            open_terminal_bridge._cleanup_runtime_directory(socket_path)
+
+    def test_deep_project_path_does_not_enter_socket_address(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            for index in range(12):
+                project /= "deep-project-directory-" + ("x" * 20) + str(index)
+            project.mkdir(parents=True)
+            with patch.dict(os.environ, {}, clear=False):
+                socket_path = open_terminal_bridge._socket_path(project, "terminal-" + ("a" * 32))
+            self.assertNotIn(str(project), str(socket_path))
+            self.assertLess(len(os.fsencode(str(socket_path))), 104)
+            open_terminal_bridge._cleanup_runtime_directory(socket_path)
+
+    def test_runtime_symlink_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            real = Path(directory) / "real"
+            real.mkdir()
+            link = Path(directory) / "runtime-link"
+            link.symlink_to(real, target_is_directory=True)
+            with patch.dict(os.environ, {"CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR": str(link)}):
+                with self.assertRaises(TerminalBridgeError):
+                    open_terminal_bridge._socket_path(Path(directory), "terminal-" + ("a" * 32))
+
+    def test_concurrent_runtime_paths_are_distinct(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR": directory}):
+                first = open_terminal_bridge._socket_path(Path(directory), "terminal-" + ("a" * 32))
+                second = open_terminal_bridge._socket_path(Path(directory), "terminal-" + ("a" * 32))
+            self.assertNotEqual(first, second)
+            self.assertEqual(first.parent.stat().st_uid, os.getuid())
+            self.assertEqual(first.parent.stat().st_mode & 0o077, 0)
+            open_terminal_bridge._cleanup_runtime_directory(first)
+            open_terminal_bridge._cleanup_runtime_directory(second)
+
+    def test_startup_diagnostics_are_bounded_and_non_secret(self):
+        class FakeProcess:
+            returncode = 1
+            stderr = io.BytesIO(b"OSError: AF_UNIX path too long\n")
+            stdin = stdout = None
+
+        diagnostics = open_terminal_bridge._startup_diagnostics(FakeProcess(), Path("/tmp/session.sock"))
+        self.assertIn("socket_path_bytes=", diagnostics)
+        self.assertIn("AF_UNIX path too long", diagnostics)
+        self.assertNotIn("capability", diagnostics.lower())
 
     @patch("open_terminal_bridge.subprocess.run")
     def test_native_mode_reports_new_tab_without_claiming_capture(self, run):

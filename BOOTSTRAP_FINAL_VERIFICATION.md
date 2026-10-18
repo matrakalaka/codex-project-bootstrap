@@ -27,11 +27,13 @@ outstanding**.
 ## Tests
 
 The subsequent owner-host failure investigation identified an overlong
-AF_UNIX socket path during managed server startup. The bridge now uses a
-short project/session-bound socket basename and reports bounded child startup
-stderr on readiness failure. A regression test for the path bound passes.
-The four host-managed tests and smoke must be rerun against the new local
-candidate.
+AF_UNIX absolute socket path during managed server startup. The bridge now
+uses a validated private per-session runtime directory independent of project
+depth, measures the complete address, rejects unsafe runtime substitutions,
+and reports bounded child startup stderr and exit status. Sandbox regression
+qualification now reports 73 tests, 69 passed, and 4 host-managed skips with
+no ResourceWarning. The four host-managed tests and smoke must be rerun
+against the new local candidate.
 
 Passed during this qualification:
 

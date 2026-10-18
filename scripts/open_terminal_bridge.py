@@ -21,8 +21,10 @@ import secrets
 import select
 import signal
 import socket
+import stat
 import subprocess
 import sys
+import tempfile
 import termios
 import time
 import uuid
@@ -52,27 +54,92 @@ def _metadata_path(project_root: Path, session_id: str) -> Path:
 
 
 def _socket_path(project_root: Path, session_id: str) -> Path:
-    # Keep the location configurable for sandboxed hosts, but keep the socket
-    # basename short. macOS sockaddr_un paths are limited to roughly 104
-    # bytes; embedding the full random session id can make a valid temporary
-    # directory unusable. The digest remains session/project-bound and the
-    # authenticated metadata still carries the exact path.
-    directory = Path(os.environ.get("CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR", "/tmp")).expanduser()
-    directory.mkdir(parents=True, exist_ok=True)
+    # AF_UNIX addresses on macOS have a short absolute-path limit. Use a
+    # private per-session directory below a validated runtime root so the
+    # project path never contributes to the socket address.
+    configured = os.environ.get("CODEX_BOOTSTRAP_TERMINAL_SOCKET_DIR")
+    default_root = Path(tempfile.gettempdir()) / "codex-bootstrap-terminal"
+    root = Path(configured).expanduser() if configured else default_root
+    if len(os.fsencode(str(root))) + 24 >= 100:
+        root = default_root
+    _ensure_private_directory(root)
+    runtime = Path(tempfile.mkdtemp(prefix="s-", dir=str(root)))
+    _ensure_private_directory(runtime)
+    socket_path = runtime / "session.sock"
+    if len(os.fsencode(str(socket_path))) >= 104:
+        _cleanup_runtime_directory(socket_path)
+        raise TerminalBridgeError(
+            f"terminal socket runtime path too long: {len(os.fsencode(str(socket_path)))} bytes"
+        )
+    return socket_path
+
+
+def _ensure_private_directory(path: Path) -> None:
+    """Create and validate an owner-only, non-symlink runtime directory."""
     try:
-        os.chmod(directory, 0o700)
-    except OSError:
-        pass
-    socket_id = hashlib.sha256(f"{project_root.resolve()}\0{session_id}".encode()).hexdigest()[:24]
-    return directory / f"cbs-{socket_id}.sock"
+        path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        info = path.lstat()
+    except OSError as exc:
+        raise TerminalBridgeError(f"terminal runtime directory unavailable: {path}: {exc}") from exc
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise TerminalBridgeError("terminal runtime directory is not a real directory")
+    if info.st_uid != os.getuid() or (info.st_mode & 0o077):
+        raise TerminalBridgeError("terminal runtime directory ownership or permissions are unsafe")
 
 
-def _startup_diagnostics(process: subprocess.Popen[bytes]) -> str:
+def _validate_socket_path(path: Path, *, require_socket: bool) -> None:
+    if not path.is_absolute():
+        raise TerminalBridgeError("terminal socket path must be absolute")
+    path_length = len(os.fsencode(str(path)))
+    if path_length >= 104:
+        raise TerminalBridgeError(f"terminal socket path too long: {path_length} bytes")
+    _ensure_private_directory(path.parent)
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        if require_socket:
+            raise TerminalBridgeError("terminal socket is missing")
+        return
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISSOCK(info.st_mode):
+        raise TerminalBridgeError("terminal socket path was substituted")
+    if info.st_uid != os.getuid() or (info.st_mode & 0o077):
+        raise TerminalBridgeError("terminal socket ownership or permissions are unsafe")
+
+
+def _cleanup_runtime_directory(socket_path: Path) -> None:
+    """Remove only an owner-only session directory and its socket."""
+    runtime = socket_path.parent
+    try:
+        info = runtime.lstat()
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            return
+        if info.st_uid != os.getuid() or (info.st_mode & 0o077):
+            return
+        if socket_path.exists():
+            socket_info = socket_path.lstat()
+            if stat.S_ISLNK(socket_info.st_mode) or not stat.S_ISSOCK(socket_info.st_mode):
+                return
+            socket_path.unlink()
+        runtime.rmdir()
+    except (FileNotFoundError, OSError):
+        return
+
+
+def _close_process_pipes(process: subprocess.Popen[bytes]) -> None:
+    for stream in (process.stdin, process.stdout, process.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+
+def _startup_diagnostics(process: subprocess.Popen[bytes], socket_path: Path) -> str:
     """Return bounded server-startup diagnostics without exposing secrets."""
     try:
         stderr = process.stderr
         if stderr is None:
-            return f"server exit status {process.returncode}"
+            return f"socket_path_bytes={len(os.fsencode(str(socket_path)))}; server exit status {process.returncode}"
         data = stderr.read(4096)
     except (OSError, ValueError):
         data = b""
@@ -80,8 +147,8 @@ def _startup_diagnostics(process: subprocess.Popen[bytes]) -> str:
     if len(detail) > 2000:
         detail = detail[-2000:]
     if detail:
-        return f"server exit status {process.returncode}; stderr: {detail}"
-    return f"server exit status {process.returncode}"
+        return f"socket_path_bytes={len(os.fsencode(str(socket_path)))}; server exit status {process.returncode}; stderr: {detail}"
+    return f"socket_path_bytes={len(os.fsencode(str(socket_path)))}; server exit status {process.returncode}"
 
 
 def _write_metadata(path: Path, body: dict[str, Any]) -> None:
@@ -164,6 +231,11 @@ def _load_metadata(project_root: Path, session_id: str) -> dict[str, Any]:
         raise TerminalBridgeError("terminal capability has expired")
     if not hmac.compare_digest(str(body.get("integrity", "")), _metadata_mac(body, secret)):
         raise TerminalBridgeError("terminal session metadata integrity check failed")
+    socket_path = Path(body.get("socket", ""))
+    if body.get("mode") == "managed":
+        if body.get("runtime_dir") != str(socket_path.parent):
+            raise TerminalBridgeError("terminal runtime directory binding is inconsistent")
+        _validate_socket_path(socket_path, require_socket=False)
     body["_secret"] = secret
     return body
 
@@ -231,17 +303,36 @@ def open_session(project_root: Path, *, mode: str, approved: bool, command: str 
 
     sock = _socket_path(root, session_id)
     metadata["socket"] = str(sock)
+    metadata["runtime_dir"] = str(sock.parent)
     metadata["integrity"] = _metadata_mac(metadata, secret)
-    process = subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve()), "--serve", "--socket", str(sock), "--project-root", str(root),
-         "--capability-file", str(capability_file)],
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
+    try:
+        process = subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "--serve", "--socket", str(sock), "--project-root", str(root),
+             "--capability-file", str(capability_file)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except BaseException:
+        capability_file.unlink(missing_ok=True)
+        _cleanup_runtime_directory(sock)
+        raise
     _PROCESS_HANDLES[session_id] = process
     metadata["pid"] = process.pid
     metadata["integrity"] = _metadata_mac(metadata, secret)
-    _write_metadata(metadata_path, metadata)
+    try:
+        _write_metadata(metadata_path, metadata)
+    except BaseException:
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=2)
+        _PROCESS_HANDLES.pop(session_id, None)
+        capability_file.unlink(missing_ok=True)
+        _close_process_pipes(process)
+        _cleanup_runtime_directory(sock)
+        raise
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         if process.poll() is not None:
@@ -267,7 +358,9 @@ def open_session(project_root: Path, *, mode: str, approved: bool, command: str 
         process.wait(timeout=2)
     _PROCESS_HANDLES.pop(session_id, None)
     capability_file.unlink(missing_ok=True)
-    diagnostics = _startup_diagnostics(process)
+    diagnostics = _startup_diagnostics(process, sock)
+    _close_process_pipes(process)
+    _cleanup_runtime_directory(sock)
     raise TerminalBridgeError(f"managed terminal session did not become ready: {diagnostics}")
 
 
@@ -317,12 +410,12 @@ def submit(project_root: Path, session_id: str, text: str, *, approved: bool, ti
         if result.get("outcome") in {"TIMED_OUT_TERMINATED", "OUTPUT_LIMIT_TERMINATED"}:
             metadata.pop("_secret", None)
             metadata.update(state="CLOSED", closed_at=time.time(), termination="timeout_terminated")
-            metadata["integrity"] = _metadata_mac(metadata, _load_secret(Path(metadata["capability_file"]))[0])
+            metadata["integrity"] = _metadata_mac(metadata, _read_secret(Path(metadata["capability_file"]))[0])
             _write_metadata(_metadata_path(project_root.resolve(), session_id), metadata)
         elif result.get("outcome") in {"TERMINATION_FAILED", "UNKNOWN"}:
             metadata.pop("_secret", None)
             metadata.update(state="UNKNOWN", termination=result.get("outcome"))
-            metadata["integrity"] = _metadata_mac(metadata, _load_secret(Path(metadata["capability_file"]))[0])
+            metadata["integrity"] = _metadata_mac(metadata, _read_secret(Path(metadata["capability_file"]))[0])
             _write_metadata(_metadata_path(project_root.resolve(), session_id), metadata)
         return result
     except OSError as exc:
@@ -359,6 +452,8 @@ def close_session(project_root: Path, session_id: str, *, approved: bool) -> dic
         except subprocess.TimeoutExpired:
             handle.terminate()
             handle.wait(timeout=2)
+        _close_process_pipes(handle)
+    _cleanup_runtime_directory(Path(metadata.get("socket", "")))
     return {**result, "session_id": session_id}
 
 
@@ -444,10 +539,9 @@ def _serve(sock_path: Path, project_root: Path, capability_file: Path) -> int:
     capability_session = capability.get("session_id")
     if not isinstance(capability_session, str) or not _ID_RE.fullmatch(capability_session):
         raise TerminalBridgeError("server capability has an invalid session identity")
-    try:
-        sock_path.unlink()
-    except FileNotFoundError:
-        pass
+    if sock_path.exists() or sock_path.is_symlink():
+        raise TerminalBridgeError("terminal socket path collision detected")
+    _ensure_private_directory(sock_path.parent)
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server.bind(str(sock_path))
     try:
@@ -528,10 +622,7 @@ def _serve(sock_path: Path, project_root: Path, capability_file: Path) -> int:
         except OSError:
             pass
         server.close()
-        try:
-            sock_path.unlink()
-        except FileNotFoundError:
-            pass
+        _cleanup_runtime_directory(sock_path)
 
 
 def _serve_submit(fd: int, text: str, timeout: float, shell_pid: int) -> tuple[dict[str, Any], bool]:

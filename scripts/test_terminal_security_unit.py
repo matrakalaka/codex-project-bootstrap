@@ -81,7 +81,8 @@ class TerminalSecurityUnitTests(unittest.TestCase):
             secret = bridge._write_secret(cap, project_root=root, session_id=session_id)
             metadata = {"schema": bridge.SESSION_SCHEMA, "session_id": session_id,
                         "project_root": str(root.resolve()), "mode": "managed", "state": "OPEN",
-                        "socket": str(root / "missing.sock"), "capability_file": str(cap)}
+                        "socket": str(root / "missing.sock"), "runtime_dir": str(root),
+                        "capability_file": str(cap)}
             metadata["integrity"] = bridge._metadata_mac(metadata, secret)
             bridge._write_metadata(sessions / f"{session_id}.json", metadata)
             result = bridge.close_session(root, session_id, approved=True)

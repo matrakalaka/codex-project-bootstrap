@@ -49,10 +49,14 @@ Normal-host verification exposed a startup-only failure: the server process
 was started with stderr discarded, and the socket basename embedded the full
 session identifier. With macOS temporary-directory prefixes, the resulting
 AF_UNIX path could exceed the platform `sockaddr_un` path limit. The bridge
-now derives a short project/session-bound digest basename and preserves
-bounded server stderr and exit status in the readiness error. Authentication,
-metadata HMACs, replay rejection, approval gates, and process-group handling
-are unchanged. A regression test covers the bounded socket name.
+now uses a validated owner-only runtime root and a collision-resistant
+per-session runtime directory, so the absolute socket address is independent
+of the project path. It measures the complete encoded address, preserves
+bounded server stderr and exit status in readiness errors, and cleans up
+owned artifacts and subprocess pipes. Authentication, metadata HMACs, replay
+rejection, approval gates, and process-group handling are unchanged.
+Regression tests cover deep project paths, symlink substitution, concurrent
+runtime paths, collisions, and diagnostic output.
 
 On the requested candidate, a fresh AF_UNIX probe returned
 PermissionError: [Errno 1] Operation not permitted. The four managed-PTY
