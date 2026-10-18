@@ -40,3 +40,13 @@ Privacy & Security → Automation/Accessibility as prompted by macOS.
 
 The managed PTY path uses a dedicated local process and does not require
 Terminal.app Automation permission.
+
+## Final qualification attempt
+
+On the requested candidate, a fresh AF_UNIX probe returned
+PermissionError: [Errno 1] Operation not permitted. The four managed-PTY
+integration tests therefore resulted in 0 PASS, 0 FAIL, 4 SKIP. No managed
+Codex CLI smoke was claimed. The capability/replay/cross-session, timeout,
+metadata, and close semantics remain covered by the passing non-socket unit
+tests; host integration remains BLOCKED_PRECONDITION until rerun from a
+normal owner-authorized macOS Terminal.

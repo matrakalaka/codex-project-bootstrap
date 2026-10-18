@@ -34,6 +34,8 @@ Passed during this qualification:
 - Vendored AgentTerm suite: **NOT RUN**. The previously cited isolated
   environment was absent and network access prevented installing pytest into a
   temporary environment; no pass claim is made.
+- Managed Codex CLI smoke: BLOCKED_PRECONDITION / NOT RUN because the same
+  AF_UNIX restriction prevented opening a managed session.
 - The new launcher test verified read-only discovery, explicit two-step
   authorization, session creation, and preservation of a dirty target file.
 - The denied AgentTerm launcher path returned code 2 and created no session.
@@ -52,6 +54,10 @@ git diff --check
 
 The vendored AgentTerm suite must be recorded by the independent reviewer
 before publication; no protected-device test is required or permitted.
+
+The exact owner-authorized normal-Terminal rerun commands and the managed
+Codex smoke procedure are recorded in
+BOOTSTRAP_SECURITY_REMEDIATION_20261018.md.
 
 ## Remaining blockers
 

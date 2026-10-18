@@ -29,6 +29,43 @@ termination, close failure, initialization concurrency/crash recovery,
 verification authorization, launcher tests, authority tests, and ledger CLI
 behavior passed.
 
+Final qualification rerun on the requested commit confirmed:
+
+    AF_UNIX probe: BLOCKED_PRECONDITION (errno 1, Operation not permitted)
+    Four managed-PTY tests: 0 PASS, 0 FAIL, 4 SKIP
+    Bootstrap suite: 64 PASS, 0 FAIL, 4 SKIP (68 total)
+    Vendored AgentTerm pytest suite: BLOCKED_PRECONDITION / NOT RUN
+    Managed Codex CLI smoke: BLOCKED_PRECONDITION / NOT RUN
+
+The vendored suite could not be recreated locally: no pytest executable was
+present in the previously referenced environment, system Python had no pytest,
+and network access was unavailable for a temporary installation. No 87-test
+pass claim is made.
+
+## Owner-authorized normal Terminal qualification
+
+If this Codex sandbox is still active, run the following from a normal,
+owner-authorized macOS Terminal. These commands do not publish, activate the
+launcher, change MCP configuration, or touch protected systems:
+
+    cd /Users/admin/codex-bootstrap-rc
+    export PYTHONPATH=scripts
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v \
+      test_open_terminal_bridge.OpenTerminalBridgeTests.test_managed_session_is_selected_multiline_and_audited \
+      test_open_terminal_bridge.OpenTerminalBridgeTests.test_direct_socket_without_capability_is_rejected \
+      test_open_terminal_bridge.OpenTerminalBridgeTests.test_timeout_terminates_session_and_queued_input_cannot_run \
+      test_open_terminal_bridge.OpenTerminalBridgeTests.test_tampered_metadata_is_rejected
+
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_*.py'
+    python3 -m pytest -q vendor/agentterm/tests
+
+For the harmless managed Codex smoke, initialize a synthetic repository with
+the approved AgentTerm executable, open a managed session, submit only
+codex --version, capture the returned output and returncode, close the
+session, and verify the terminal_session/terminal_command records and ledger
+hash chain. The smoke must be recorded as BLOCKED_PRECONDITION if AgentTerm,
+Codex, or AF_UNIX is unavailable.
+
 Python compilation and diff checks passed. The vendored AgentTerm pytest suite
 is **NOT RUN** because the previously referenced isolated pytest environment
 was absent and network access prevented temporary installation.

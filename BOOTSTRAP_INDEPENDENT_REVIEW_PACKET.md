@@ -52,6 +52,11 @@ The vendored AgentTerm pytest suite is **NOT RUN** because its isolated pytest
 environment was absent and network access was unavailable; no pass claim is
 made.
 
+Final candidate rerun classification: PASS 64, FAIL 0, SKIP 4, BLOCKED 2
+(vendored pytest suite and managed Codex smoke). The AF_UNIX probe itself was
+BLOCKED_PRECONDITION with errno 1. Exact normal-Terminal rerun commands are
+recorded in BOOTSTRAP_SECURITY_REMEDIATION_20261018.md.
+
 ## Remediation review actions
 
 The prior seven findings are addressed in
