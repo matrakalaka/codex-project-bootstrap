@@ -2,8 +2,9 @@
 
 ## Recommendation
 
-**A — preserve the release candidate and proceed to controlled deployment
-preparation. GO for independent human security review; NO-GO for production
+**Local direction supersedes hosted direction: preserve the release candidate
+and use AgentTerm as an opt-in local Bootstrap successor. Hosted deployment
+work is frozen. GO for independent human security review; NO-GO for production
 activation.**
 
 The Phase 1 worktree engine and local platform services are implemented in the
@@ -15,6 +16,11 @@ Provider-independent integration contracts are also implemented for strict
 runtime configuration, OIDC claim validation, signed billing webhooks, and an
 HTTPS-only sync transport. They are testable locally but are not evidence of a
 live identity provider, billing account, hosted service, or deployment.
+
+For the local product objective, see `AGENTTERM_BOOTSTRAP_TAKEOVER.md`. It is
+the authoritative local-use decision: **READY FOR LOCAL OPT-IN TAKEOVER**.
+Do not resume VPS, hosted OIDC, billing, Kubernetes, or public PostgreSQL work
+unless a separate owner-approved objective reopens it.
 
 The strongest remaining risks are the unreviewed production trust boundary,
 unqualified real-provider and operational paths, and the shared bearer-token

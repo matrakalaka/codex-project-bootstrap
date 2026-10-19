@@ -3,6 +3,11 @@
 Status: local development implementation qualified; production activation is
 disabled pending independent security and host review.
 
+The active product objective is now the reversible local Bootstrap takeover,
+documented in `AGENTTERM_BOOTSTRAP_TAKEOVER.md`. Hosted SaaS, VPS, public
+OIDC/billing, Kubernetes, and production PostgreSQL work are frozen and are
+not prerequisites for local use.
+
 ## Current checkpoint
 
 Branch `feature/agentterm-worktree-phase1`, starting checkpoint
