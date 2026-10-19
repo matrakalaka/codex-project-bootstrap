@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+# Repository-owned launcher. It deliberately changes only this process's
+# import path and never edits shell profiles, PATH, or project files.
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
+python_bin=${AGENTTERM_PYTHON:-python3}
+
+if [ -n "${PYTHONPATH:-}" ]; then
+    export PYTHONPATH="$repo_dir/vendor/agentterm/src:$PYTHONPATH"
+else
+    export PYTHONPATH="$repo_dir/vendor/agentterm/src"
+fi
+
+exec "$python_bin" -m agentterm.cli "$@"
