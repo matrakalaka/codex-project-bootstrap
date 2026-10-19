@@ -387,7 +387,12 @@ class OfflineQueue:
 
 class LoopbackSyncService:
     """Development HTTP transport; loopback-only and explicitly not production TLS."""
-    def __init__(self, server: LocalSyncServer, *, token: str | None = None, max_body: int = 1 << 20):
+    def __init__(self, server: LocalSyncServer, *, token: str | None = None, max_body: int = 1 << 20,
+                 bind_host: str = "127.0.0.1", bind_port: int = 0):
+        if bind_host not in {"127.0.0.1", "::1"}:
+            raise PlatformError("development sync service must bind to loopback")
+        if bind_port < 0 or bind_port > 65535:
+            raise PlatformError("invalid sync service port")
         self.server, self.token, self.max_body = server, token or secrets.token_urlsafe(32), max_body
         self._lifecycle_lock = threading.Lock()
         service = self
@@ -422,7 +427,7 @@ class LoopbackSyncService:
                     envelopes = service.server.pull_for_device(query.get("device", [""])[0], project, after); self._reply(200, {"envelopes": [asdict(item) for item in envelopes]})
                 except AuthorizationDenied as exc: self._reply(403, {"error": str(exc)[:200], "code": "authorization_denied"})
                 except Exception as exc: self._reply(400, {"error": str(exc)[:200], "code": "invalid_request"})
-        self.http = ThreadingHTTPServer(("127.0.0.1", 0), Handler); self.thread: threading.Thread | None = None
+        self.http = ThreadingHTTPServer((bind_host, bind_port), Handler); self.thread: threading.Thread | None = None
     @property
     def address(self) -> tuple[str, int]: return self.http.server_address
     def start(self) -> None:

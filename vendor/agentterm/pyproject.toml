@@ -14,6 +14,7 @@ dependencies = ["cryptography>=42,<51"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
+hosted = ["psycopg[binary]>=3.3,<4"]
 
 [project.scripts]
 agentterm = "agentterm.cli:main"

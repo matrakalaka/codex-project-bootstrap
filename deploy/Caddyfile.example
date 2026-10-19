@@ -1,0 +1,9 @@
+# TLS termination example. Replace the hostname and certificate policy through
+# an approved deployment process. The AgentTerm process remains loopback-only.
+sync.example.invalid {
+    reverse_proxy 127.0.0.1:8765
+    log {
+        output stdout
+        format json
+    }
+}
