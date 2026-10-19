@@ -5,6 +5,36 @@
 **Installable: YES. Local staging: YES on a normal host. Production deployable:
 NO. Production activation: NO-GO. Independent review: READY.**
 
+## Independent release decision
+
+**Decision: A — proceed to controlled deployment preparation.** Preserve this
+release candidate as the rollback baseline and continue only with isolated
+staging, provider configuration, operational rehearsal, and independent
+review. Do not interpret this decision as approval to expose the service or
+enable production Git mutation.
+
+The architecture is suitable for controlled staging because the local
+cryptographic, Keychain, replay, PostgreSQL concurrency, backup/restore, and
+TLS-boundary evidence is internally consistent. It is not yet suitable for
+production activation because the hosted service has not been deployed, real
+OIDC and billing providers are not connected, production operations have not
+been exercised, and no independent security approval exists.
+
+### Residual risk assessment
+
+- **CRITICAL:** production activation lacks independent security approval and
+  a reviewed deployment boundary; production Git mutation must remain
+  disabled.
+- **HIGH:** the real OIDC/billing provider paths, hosted secret operations,
+  observability, retention, disaster recovery, and rollback have not been
+  qualified in their target environment.
+- **HIGH:** the service uses a shared bearer-token boundary behind TLS
+  termination; token rotation, proxy policy, rate limits, and multi-instance
+  operational behavior require deployment-specific review.
+- **MEDIUM:** Docker deployment was not run because the local daemon was
+  unavailable; the image and configuration artifacts remain available for an
+  authorized staging environment.
+
 Final branch: `feature/agentterm-worktree-phase1`.
 
 The verified rollback baseline is `d5b5630d25b95e284074caaa4f0b5f552285ff78`.

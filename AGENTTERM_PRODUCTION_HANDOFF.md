@@ -2,7 +2,9 @@
 
 ## Recommendation
 
-**GO for independent human security review. NO-GO for production activation.**
+**A — preserve the release candidate and proceed to controlled deployment
+preparation. GO for independent human security review; NO-GO for production
+activation.**
 
 The Phase 1 worktree engine and local platform services are implemented in the
 existing development worktree. The local CLI demonstration is real and uses
@@ -13,6 +15,11 @@ Provider-independent integration contracts are also implemented for strict
 runtime configuration, OIDC claim validation, signed billing webhooks, and an
 HTTPS-only sync transport. They are testable locally but are not evidence of a
 live identity provider, billing account, hosted service, or deployment.
+
+The strongest remaining risks are the unreviewed production trust boundary,
+unqualified real-provider and operational paths, and the shared bearer-token
+service boundary. These are deployment and approval gates, not reasons to
+discard the locally qualified candidate.
 
 ## Owner-authorized next actions
 
@@ -27,11 +34,13 @@ live identity provider, billing account, hosted service, or deployment.
 No publication, deployment, live billing, protected-repository mutation, or
 launcher activation is authorized by this handoff.
 
-## Required requalification after SQLite fix
+## Final host evidence
 
-The previous normal-host failure was a cross-thread SQLite connection defect.
-It is fixed in the current source. Rerun the following on normal macOS with
-loopback permission before treating transport qualification as complete:
+The cross-thread SQLite defect and concurrent sequence-ordering defect were
+fixed and host-qualified. The final isolated environment run completed 142
+tests with zero failures and zero skips, including the loopback/AF_UNIX
+selection and the optional PostgreSQL test. The exact requalification command
+remains available for future candidate changes:
 
 ```sh
 cd /Users/admin/codex-agentterm-phase1
