@@ -4,6 +4,11 @@
 
 - AgentTerm normal-host tests: **142 PASS**, **0 FAIL**, **0 SKIP**.
 - Strict `ResourceWarning`: **142 PASS**, **0 FAIL**, **0 SKIP**.
+- Final candidate rerun in the available qualification environment: **141
+  PASS**, **0 FAIL**, **1 SKIP**; the skip was `test_postgres.py` because the
+  selected venv did not contain the optional `psycopg` dependency. The
+  PostgreSQL-specific qualification was run separately against PostgreSQL 16
+  and passed.
 - Bootstrap/security/continuity strict regression: **74 PASS**, **2 subtests PASS**.
 - AF_UNIX and loopback HTTP tests: included in the normal-host result above.
 
