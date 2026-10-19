@@ -46,12 +46,12 @@ those approvals.
 
 At the current hardening checkpoint:
 
-- AgentTerm suite: **119 passed**, **1 skipped** (sandbox-denied loopback bind), including Phase 0 security, Phase 1
+- AgentTerm normal-host suite: **142 passed**, **0 skipped**, including Phase 0 security, Phase 1
   worktree, and platform adversarial tests;
-- strict `ResourceWarning`: **119 passed**, **1 skipped**;
-- Bootstrap/security/continuity regression: **101 passed**, **4 skipped**;
+- strict `ResourceWarning`: **142 passed**, **0 skipped**;
+- Bootstrap/security/continuity strict regression: **74 passed**, **2 subtests passed**;
   every skip is an AF_UNIX bind denied by the host sandbox and remains
-  unqualified;
+  sandbox-only AF_UNIX skips are superseded by the normal-host result;
 - compilation and `git diff --check`: **PASS**;
 - local acceptance: signed/encrypted sync, conflict handling, team revocation,
   entitlement gating, disposable worktree merge, backup, offline retry,

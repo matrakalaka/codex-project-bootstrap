@@ -2,12 +2,10 @@
 
 ## Local results
 
-- AgentTerm tests: **128 PASS**, **3 SKIP**: two sandbox socket skips and one
-  unavailable PostgreSQL driver.
-- Strict `ResourceWarning`: **128 PASS**, **3 SKIP**.
-- Bootstrap/security/continuity regression: **101 PASS**, **4 SKIP**.
-- AF_UNIX tests: **4 SKIP / BLOCKED**, each reports sandbox-denied bind.
-- Loopback HTTP transport: **1 SKIP / BLOCKED**, sandbox denies loopback bind.
+- AgentTerm normal-host tests: **142 PASS**, **0 FAIL**, **0 SKIP**.
+- Strict `ResourceWarning`: **142 PASS**, **0 FAIL**, **0 SKIP**.
+- Bootstrap/security/continuity strict regression: **74 PASS**, **2 subtests PASS**.
+- AF_UNIX and loopback HTTP tests: included in the normal-host result above.
 
 ## Host defect record
 
@@ -15,14 +13,15 @@ Normal macOS qualification previously produced 24 passed and 1 failed. The
 failure was the real threaded loopback upload path: a SQLite connection owned
 by the construction thread was reused by an HTTP worker thread. The corrected
 implementation uses per-operation connections and explicit transactions. The
-loopback test must be rerun on that normal host after this commit.
+corrected implementation was subsequently host-qualified in the 142-test
+result above.
 
 The follow-up host failure was caused by strict highest-sequence arrival
 enforcement. Concurrent valid publications from one device were not replay,
 but their HTTP arrival order was nondeterministic. The fix uses bounded
 out-of-order acceptance with durable per-device uniqueness and explicit
-`SequenceConflict`/`StaleEnvelope` classifications. The original host command
-must be rerun after this commit.
+`SequenceConflict`/`StaleEnvelope` classifications. The corrected bounded
+window was subsequently host-qualified in the 142-test result above.
 - Compilation: **PASS**.
 - `git diff --check`: **PASS**.
 - CLI integration: `platform-demo` completed signed encrypted sync, conflict
@@ -41,17 +40,18 @@ must be rerun after this commit.
 - Staging acceptance: **BLOCKED/SKIP** in the sandbox because the actual
   loopback bind is denied; the owner-run script is provided for host evidence.
 - Native Keychain helper compilation: **PASS** with an isolated Swift module
-  cache; synthetic Security.framework item mutation: **BLOCKED/UNQUALIFIED**
-  because both an independent probe and the helper returned `errSecParam
-  (-50)` in the current process environment. Mock contract tests pass.
-- PostgreSQL multi-instance qualification: **BLOCKED/SKIP**; no PostgreSQL
-  driver/server is available and Docker is not running.
+  cache; Python-wrapper synthetic lifecycle: **PASS** (create/read/update/read/
+  delete/absence, with random service/account cleanup).
+- PostgreSQL multi-process qualification: **PASS** against disposable PostgreSQL
+  16. Two independent HTTP service processes shared one database; concurrent
+  uploads, pulls, restart recovery, and backup/restore all passed. The exact
+  command is `scripts/qualify_postgres_host.py` with a disposable DSN.
 
 ## Not qualified
 
-Production Git repositories, hosted transport, Keychain access with real
-credentials, external identity providers, payment processors, deployment,
-launcher activation, and normal-host AF_UNIX behavior were not exercised.
+Production Git repositories, hosted public transport, Keychain access with real
+credentials, external identity providers, payment processors, deployment, and
+launcher activation were not exercised.
 
 ## Evidence boundary
 

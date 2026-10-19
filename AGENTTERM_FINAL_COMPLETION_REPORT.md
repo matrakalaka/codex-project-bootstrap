@@ -32,27 +32,31 @@ schema version.
 
 ## Qualification evidence
 
-- AgentTerm strict suite: 128 passed, 3 skips (two loopback-bind skips and one
-  unavailable PostgreSQL driver; including the staging acceptance test).
-- Bootstrap/security/continuity suite: 101 passed, 4 AF_UNIX skips.
-- Combined host-targeted command in sandbox: 23 passed, 5 explicit skips.
+- AgentTerm normal-host strict suite: 142 passed, 0 failed, 0 skipped.
+- Bootstrap/security/continuity strict suite: 74 passed, 2 subtests passed.
+- Bootstrap/security/continuity strict suite: 74 passed, 2 subtests passed.
+- Disposable PostgreSQL 16: two independent HTTP processes, concurrent
+  publication, cursor persistence, restart recovery, and pg_dump/restore all
+  passed (4 objects, 1 cursor restored).
 - Compilation, wheel packaging, CLI smoke, health inspection, and Git diff
   checks: passed.
 - Provider integration contracts: runtime configuration, OIDC claim checks,
   signed billing webhook verification, replay rejection, and HTTPS transport
   validation passed.
 
-Skipped socket tests are not normal-host qualification. The owner must rerun
-the documented macOS command with loopback and AF_UNIX permissions.
+The normal-host command included loopback and AF_UNIX tests; no socket skips
+were reported in the 142-test result.
 
 ## Remaining external gates
 
 - Independent cryptographic/security review.
 - Reviewed native macOS Keychain/KMS implementation; the helper compiles with
-  an isolated module cache, but synthetic native item mutation returned
-  `errSecParam (-50)` in the current process environment. No real credentials
-  or personal Keychain items were accessed.
-- Normal-host loopback and AF_UNIX qualification.
+  an isolated module cache and the Python-wrapper synthetic lifecycle passed
+  with random scoped cleanup. No real credentials or personal Keychain items
+  were accessed. Disposable PostgreSQL 16
+  multi-process service qualification passed, including restart and backup/
+  restore; production deployment remains disabled.
+- Independent review of native Keychain access-control policy.
 - Production Git mutation approval and host policy.
 - Authenticated hosted transport, identity/SSO, billing provider, deployment,
   retention, incident response, and operational service controls.

@@ -43,17 +43,16 @@ restart recovery, disposable Git merge, and unknown-state blocking.
 
 ## Qualification
 
-- AgentTerm strict suite: 127 passed, 2 sandbox loopback skips.
+- AgentTerm normal-host strict suite: 142 passed, 0 failed, 0 skipped.
 - Synthetic OIDC/billing integration: 2 passed.
-- Staging acceptance test: sandbox-blocked/skipped because loopback bind is
-  denied; host execution is provided by `scripts/qualify_agentterm_host.sh`.
-- Repository regression: 101 passed, 4 AF_UNIX sandbox skips.
-- Owner normal-host targeted qualification: 30 passed, 0 skipped, 0 failed.
+- Staging acceptance test: owner normal-host evidence passed; sandbox-only
+  execution remains blocked by loopback policy.
+- Bootstrap/security/continuity strict regression: 74 passed, 2 subtests passed.
 - Compilation, wheel packaging, CLI acceptance, and diff checks: passed.
 - `scripts/qualify_agentterm_host.sh` provides one-command normal-host
   qualification for the targeted tests and staging acceptance.
-- PostgreSQL storage contract is implemented but unqualified because no
-  PostgreSQL server, driver, or Docker daemon is available locally.
+- PostgreSQL 16 multi-process service qualification passed with restart,
+  cursor persistence, concurrent HTTP publication, and backup/restore.
 
 ## External gates
 

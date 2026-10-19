@@ -11,9 +11,18 @@ func fail(_ status: OSStatus) -> Never {
     exit(1)
 }
 
+func succeed() {
+    let response = Response(ok: true, value: nil, error: nil)
+    FileHandle.standardOutput.write(try! JSONEncoder().encode(response))
+}
+
 let input = FileHandle.standardInput.readDataToEndOfFile()
 guard let request = try? JSONDecoder().decode(Request.self, from: input), !request.service.isEmpty, !request.account.isEmpty else { fail(errSecParam) }
-let identity: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: request.service as CFString, kSecAttrAccount: request.account as CFString]
+let identity: [String: Any] = [
+    kSecClass as String: kSecClassGenericPassword,
+    kSecAttrService as String: request.service,
+    kSecAttrAccount as String: request.account,
+]
 
 switch request.command {
 case "put":
@@ -21,15 +30,19 @@ case "put":
     // kSecAttrAccessibleThisDeviceOnly is an iOS attribute and returns
     // errSecParam on macOS. macOS Keychain access is governed by the item ACL
     // and application code-signing boundary instead.
-    var item = identity; item[kSecValueData] = data
+    var item = identity
+    item[kSecValueData as String] = data
     var status = SecItemAdd(item as CFDictionary, nil)
     if status == errSecDuplicateItem {
-        let update: [CFString: Any] = [kSecValueData: data]
+        let update: [String: Any] = [kSecValueData as String: data]
         status = SecItemUpdate(identity as CFDictionary, update as CFDictionary)
     }
     if status != errSecSuccess { fail(status) }
+    succeed()
 case "get":
-    var query = identity; query[kSecReturnData] = true; query[kSecMatchLimit] = kSecMatchLimitOne
+    var query = identity
+    query[kSecReturnData as String] = true
+    query[kSecMatchLimit as String] = kSecMatchLimitOne
     var result: CFTypeRef?
     let status = SecItemCopyMatching(query as CFDictionary, &result)
     guard status == errSecSuccess, let data = result as? Data else { fail(status) }
@@ -38,5 +51,6 @@ case "get":
 case "delete":
     let status = SecItemDelete(identity as CFDictionary)
     if status != errSecSuccess && status != errSecItemNotFound { fail(status) }
+    succeed()
 default: fail(errSecParam)
 }

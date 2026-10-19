@@ -134,6 +134,24 @@ def _close_process_pipes(process: subprocess.Popen[bytes]) -> None:
                 pass
 
 
+def _reap_process_handle(session_id: str) -> None:
+    process = _PROCESS_HANDLES.pop(session_id, None)
+    if process is None:
+        return
+    try:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
+        else:
+            process.wait(timeout=0)
+    finally:
+        _close_process_pipes(process)
+
+
 def _startup_diagnostics(process: subprocess.Popen[bytes], socket_path: Path) -> str:
     """Return bounded server-startup diagnostics without exposing secrets."""
     try:
@@ -408,6 +426,7 @@ def submit(project_root: Path, session_id: str, text: str, *, approved: bool, ti
             result = _request(client, {"type": "submit", "text": text, "timeout": min(max(timeout, 0.1), 30)},
                               secret=metadata["_secret"], project_root=project_root)
         if result.get("outcome") in {"TIMED_OUT_TERMINATED", "OUTPUT_LIMIT_TERMINATED"}:
+            _reap_process_handle(session_id)
             metadata.pop("_secret", None)
             metadata.update(state="CLOSED", closed_at=time.time(), termination="timeout_terminated")
             metadata["integrity"] = _metadata_mac(metadata, _read_secret(Path(metadata["capability_file"]))[0])
@@ -445,14 +464,7 @@ def close_session(project_root: Path, session_id: str, *, approved: bool) -> dic
     secret, _ = _read_secret(Path(metadata["capability_file"]))
     metadata["integrity"] = _metadata_mac(metadata, secret)
     _write_metadata(_metadata_path(project_root.resolve(), session_id), metadata)
-    handle = _PROCESS_HANDLES.pop(session_id, None)
-    if handle is not None:
-        try:
-            handle.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            handle.terminate()
-            handle.wait(timeout=2)
-        _close_process_pipes(handle)
+    _reap_process_handle(session_id)
     _cleanup_runtime_directory(Path(metadata.get("socket", "")))
     return {**result, "session_id": session_id}
 

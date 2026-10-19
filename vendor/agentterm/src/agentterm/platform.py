@@ -453,8 +453,11 @@ class LoopbackSyncTransport:
         try:
             with urllib.request.urlopen(request, timeout=5) as response: return json.loads(response.read())
         except urllib.error.HTTPError as exc:
-            try: body = json.loads(exc.read().decode(errors="replace"))
-            except json.JSONDecodeError: body = {"error": "sync transport rejected request", "code": "http_error"}
+            try:
+                try: body = json.loads(exc.read().decode(errors="replace"))
+                except json.JSONDecodeError: body = {"error": "sync transport rejected request", "code": "http_error"}
+            finally:
+                exc.close()
             raise SyncTransportError(str(body.get("error", "sync transport rejected request")), status=exc.code, code=str(body.get("code", "http_error"))) from exc
     def upload(self, envelope: SyncEnvelope) -> None: self._request("POST", "/v1/upload", canonical_bytes(asdict(envelope)))
     def pull(self, device: Device, project: str, after: int = 0) -> list[SyncEnvelope]:

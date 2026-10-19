@@ -23,9 +23,9 @@ repositories or production infrastructure.
 | OIDC lifecycle | Synthetic provider/client implemented | `oidc.py`, PKCE/signature/rotation tests |
 | Billing adapter | Synthetic provider and ordered events implemented | `billing.py`, webhook/state tests |
 | Runtime/HTTPS contracts | Implemented and tested | `integration.py` |
-| Native macOS Keychain | Implemented, native item lifecycle blocked in current process environment | Security.framework helper, Python wrapper, mock lifecycle tests; native mutation returned `errSecParam (-50)` |
+| Native macOS Keychain | Implemented and host-qualified | Security.framework helper, Python wrapper, isolated synthetic create/read/update/delete/absence lifecycle |
 | Hosted multi-instance sync | Not deployed | requires service/database/TLS infrastructure |
-| PostgreSQL distributed store | Implemented, unqualified | `postgres.py`, `deploy/postgres-schema.sql`; no driver/server available |
+| PostgreSQL distributed store | Implemented and locally multi-process qualified | `postgres.py`, `deploy/postgres-schema.sql`, `scripts/qualify_postgres_host.py`; production deployment remains unapproved |
 
 ## Commands
 
@@ -53,28 +53,27 @@ cd /Users/admin/codex-agentterm-phase1
 
 ## Evidence
 
-- AgentTerm strict suite: **128 passed, 3 skips** (two socket sandbox skips and
-  one unavailable PostgreSQL driver).
-- Bootstrap/security/continuity: **101 passed, 4 AF_UNIX skips**.
+- AgentTerm strict normal-host suite: **142 passed, 0 failed, 0 skipped**.
+- Bootstrap/security/continuity strict suite: **74 passed, 2 subtests passed**.
 - Owner historical staging qualification: **36 passed, 0 failed, 0 skipped**.
 - Current sandbox staging acceptance: blocked by loopback policy; not counted.
 - Wheel packaging, compilation, CLI demo, health, and diff checks: passed.
 
-The PostgreSQL adapter has not been represented as multi-instance evidence:
-Docker is unavailable, no PostgreSQL server is running, and neither psycopg
-driver is installed.
+Disposable PostgreSQL 16 qualification passed with two independent HTTP service
+processes sharing one database: four concurrent uploads, authenticated pulls,
+health/readiness, process restart recovery, and `pg_dump`/`pg_restore` with four
+restored objects. This is local staging evidence, not production deployment.
 
-The Security.framework helper now compiles with an isolated Swift module cache.
-An independent Security.framework probe and the AgentTerm helper both returned
-`errSecParam (-50)` for synthetic generic-password mutation in the current
-process environment, so native item lifecycle remains blocked/unqualified.
-See
+The Security.framework helper compiles with an isolated Swift module cache and
+the Python wrapper passed a real isolated synthetic create/read/update/delete
+lifecycle. Production activation still requires independent review and a
+reviewed access-control/deployment policy. See
 `AGENTTERM_NATIVE_AND_HOSTED_QUALIFICATION.md`.
 
 ## Remaining external gates
 
-1. Implement and independently review a native Security.framework Keychain
-   adapter using isolated test items only.
+1. Independently review the native Security.framework Keychain access-control
+  and deployment policy before production activation.
 2. Configure a real OIDC provider, discovery/JWKS retrieval, authorization
    code deployment, sessions, and revocation endpoint.
 3. Deploy an authenticated HTTPS service with a reviewed multi-instance

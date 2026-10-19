@@ -48,7 +48,8 @@ The local sync read path was also hardened: a pull now requires an active
 trusted key whose principal, device ID, and public key match the presented
 device. HTTP callers receive classified authorization, conflict/replay, size,
 and malformed-request responses. The local test suite covers revoked and
-forged readers; normal-host HTTP qualification remains required.
+forged readers; normal-host HTTP and AF_UNIX qualification passed in the latest
+142-test host result. Public deployment and independent review remain pending.
 
 Synthetic provider evidence now includes PKCE authorization-code exchange,
 Ed25519 token verification with key rotation, tenant claim binding, signed

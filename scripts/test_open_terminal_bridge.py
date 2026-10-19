@@ -103,6 +103,7 @@ class OpenTerminalBridgeTests(unittest.TestCase):
                 terminal_events = connection.execute(
                     "SELECT kind, body FROM events WHERE kind IN ('terminal_session', 'terminal_command')"
                 ).fetchall()
+            connection.close()
             self.assertGreaterEqual(len(terminal_events), 4)
             self.assertTrue(any('BLOCKED_PRECONDITION' in body for _, body in terminal_events))
             ledger_events = json.loads((project / ".agentterm" / "bootstrap-session.json").read_text())
@@ -163,6 +164,7 @@ class OpenTerminalBridgeTests(unittest.TestCase):
                     if handle is not None:
                         handle.terminate()
                         handle.wait(timeout=2)
+                        open_terminal_bridge._close_process_pipes(handle)
 
     def test_managed_socket_name_stays_within_macos_path_limit(self):
         with tempfile.TemporaryDirectory() as directory:

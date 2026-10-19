@@ -25,13 +25,13 @@ restart recovery.
 
 ## Local evidence
 
-- Strict AgentTerm suite after staging additions: 126 passed, 2 sandbox skips
-  (loopback transport and staging acceptance).
+- Strict normal-host AgentTerm suite: 142 passed, 0 failed, 0 skipped.
 - Synthetic OIDC and billing suite: 2 passed, covering PKCE, token signatures,
   JWKS rotation, ordered subscription events, payment failure, and duplicate
   event rejection.
-- Repository regression: 101 passed, 4 AF_UNIX sandbox skips.
-- Owner normal-host targeted baseline: 30 passed, 0 skipped, 0 failed.
+- Bootstrap/security/continuity strict regression: 74 passed, 2 subtests passed.
+- PostgreSQL 16 multi-process qualification: passed; two HTTP service
+  processes shared one database, then restart and backup/restore succeeded.
 - Sandbox staging HTTP acceptance: blocked by loopback bind policy; not passed.
 - Packaging, compilation, CLI demo, and diff checks: passed.
 
@@ -41,9 +41,9 @@ Implemented locally: synthetic staging service, health/readiness endpoints,
 graceful lifecycle, encrypted sync, replay protection, backup/restore,
 provider-independent OIDC and billing contracts, and the qualification script.
 
-Still externally blocked: native Security.framework Keychain qualification,
-real OIDC discovery/JWKS and authorization-code exchange, hosted multi-instance
-deployment, production database coordination, payment provider accounts,
+Still externally blocked: independent Keychain access-control review, real OIDC
+discovery/JWKS and authorization-code exchange, hosted deployment beyond local
+staging, payment provider accounts,
 retention/incident operations, independent security review, and production Git
 mutation approval.
 

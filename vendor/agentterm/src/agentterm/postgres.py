@@ -19,6 +19,8 @@ class PostgresUnavailable(PlatformError):
 
 
 class PostgresSyncStore:
+    protocol_version = LocalSyncServer.protocol_version
+
     def __init__(self, connect: Callable[[], Any], *, registry: TrustRegistry, replay_window: int = 256):
         self.connect, self.registry, self.replay_window = connect, registry, replay_window
 
@@ -36,6 +38,10 @@ class PostgresSyncStore:
     def initialize(self) -> None:
         with self.transaction() as connection:
             with connection.cursor() as cursor:
+                # CREATE TABLE IF NOT EXISTS still permits concurrent catalog
+                # races between independent service processes. Serialize the
+                # migration transaction without holding a process-local lock.
+                cursor.execute("SELECT pg_advisory_xact_lock(%s)", (782341901,))
                 cursor.execute("CREATE TABLE IF NOT EXISTS agentterm_objects (project TEXT NOT NULL, object_id TEXT NOT NULL, sender_device TEXT NOT NULL, sequence BIGINT NOT NULL, envelope TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(project, object_id, sender_device, sequence))")
                 cursor.execute("CREATE TABLE IF NOT EXISTS agentterm_sequences (device TEXT NOT NULL, project TEXT NOT NULL, sequence BIGINT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(device, project, sequence))")
                 cursor.execute("CREATE TABLE IF NOT EXISTS agentterm_cursors (device TEXT NOT NULL, project TEXT NOT NULL, sequence BIGINT NOT NULL, PRIMARY KEY(device, project))")
@@ -86,6 +92,43 @@ class PostgresSyncStore:
                 from .platform import Device
                 return self.pull(Device(device_id, key.owner, key.key_id, key.public_key), project, after)
         raise AuthorizationDenied("unknown device")
+
+    def advance_cursor(self, device: Any, project: str, sequence: int) -> None:
+        if device.status != "active" or device.principal.project_id != project:
+            raise AuthorizationDenied("cursor update denied")
+        self.registry.get(device.key_id, device.principal)
+        with self.transaction() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT sequence FROM agentterm_cursors "
+                    "WHERE device=%s AND project=%s FOR UPDATE",
+                    (device.device_id, project),
+                )
+                current = cursor.fetchone()
+                if current and sequence < current[0]:
+                    raise PlatformError("cursor rollback")
+                cursor.execute(
+                    "INSERT INTO agentterm_cursors(device,project,sequence) "
+                    "VALUES(%s,%s,%s) ON CONFLICT(device,project) DO UPDATE "
+                    "SET sequence=EXCLUDED.sequence",
+                    (device.device_id, project, sequence),
+                )
+
+    def cursor(self, device: Any, project: str) -> int:
+        if device.status != "active" or device.principal.project_id != project:
+            raise AuthorizationDenied("cursor read denied")
+        self.registry.get(device.key_id, device.principal)
+        connection = self.connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT sequence FROM agentterm_cursors WHERE device=%s AND project=%s",
+                    (device.device_id, project),
+                )
+                row = cursor.fetchone()
+                return row[0] if row else 0
+        finally:
+            connection.close()
 
     def health(self) -> dict[str, Any]:
         connection = self.connect()
