@@ -37,6 +37,12 @@ been exercised, and no independent security approval exists.
 
 Final branch: `feature/agentterm-worktree-phase1`.
 
+The hosting decision is documented in `AGENTTERM_HOSTING_ARCHITECTURE_DECISION.md`:
+private Linux application host plus Caddy and private PostgreSQL for the
+initial controlled deployment; managed application hosting and Kubernetes are
+deferred until their ingress and operational boundaries are separately
+reviewed.
+
 The verified rollback baseline is `d5b5630d25b95e284074caaa4f0b5f552285ff78`.
 This milestone is committed after that baseline and does not modify protected
 repositories or production infrastructure.

@@ -1,0 +1,23 @@
+[Unit]
+Description=AgentTerm PostgreSQL synchronization service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agentterm
+Group=agentterm
+WorkingDirectory=/opt/agentterm
+EnvironmentFile=/etc/agentterm/agentterm.env
+ExecStart=/opt/agentterm/venv/bin/python /opt/agentterm/scripts/run_agentterm_postgres_service.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/agentterm
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

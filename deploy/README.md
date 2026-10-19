@@ -46,3 +46,13 @@ operations, backups and restore verification, retention and monitoring,
 provider configuration, independent security approval, and explicit approval
 for production Git mutation. The example files cannot enable those gates and
 must not be treated as a production configuration.
+
+## Recommended initial hosting shape
+
+Use a private Linux host running Caddy and the AgentTerm service. Keep the
+service bound to loopback and allow PostgreSQL only over a private network.
+`agentterm.service.example` is a least-privilege systemd starting point; it
+must be reviewed and adapted for the selected host’s filesystem, secret
+manager, user, firewall, and backup policy. The architecture decision and
+rollback procedure are documented in
+`AGENTTERM_HOSTING_ARCHITECTURE_DECISION.md`.
