@@ -65,6 +65,13 @@ shared one database, concurrent publication and pull succeeded, one service
 restarted and recovered all four objects, and `pg_dump`/`pg_restore` restored
 all four objects. Production deployment remains unqualified and disabled.
 
+The optional PostgreSQL pytest also ran in an isolated environment containing
+the declared hosted dependency: **2 passed**. A disposable local HTTPS
+terminator was separately qualified: trusted health succeeded, an invalid
+bearer token on a protected request returned HTTP 401, and certificate
+hostname validation rejected an incorrect host. Docker was not run because no
+Docker daemon was available.
+
 Host command (after starting an isolated PostgreSQL cluster and setting a
 disposable DSN):
 

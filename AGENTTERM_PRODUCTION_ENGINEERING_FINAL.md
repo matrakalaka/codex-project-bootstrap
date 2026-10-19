@@ -58,6 +58,10 @@ cd /Users/admin/codex-agentterm-phase1
   skipped**; the only skip was the optional PostgreSQL test because the
   qualification venv did not contain `psycopg`. The dedicated PostgreSQL
   16 multi-process qualification below passed separately.
+- Hosted dependency qualification: **2 passed** for `test_postgres.py` in an
+  isolated environment containing the declared `hosted` extra.
+- Final candidate with the hosted dependency installed and strict
+  `ResourceWarning`: **142 passed, 0 failed, 0 skipped**.
 - Bootstrap/security/continuity strict suite: **74 passed, 2 subtests passed**.
 - Owner historical staging qualification: **36 passed, 0 failed, 0 skipped**.
 - Current sandbox staging acceptance: blocked by loopback policy; not counted.
@@ -66,6 +70,11 @@ cd /Users/admin/codex-agentterm-phase1
   entrypoint, unprivileged Docker image, production environment template, and
   TLS-termination example. These are locally reviewable deployment artifacts,
   not evidence of public deployment.
+- Local HTTPS boundary: **PASS** with a disposable certificate and loopback
+  TLS terminator; trusted health succeeded, a protected sync request with an
+  invalid bearer token returned 401, and hostname validation rejected the
+  wrong host. Docker deployment: **NOT VERIFIED** because its daemon was
+  unavailable.
 
 Disposable PostgreSQL 16 qualification passed with two independent HTTP service
 processes sharing one database: four concurrent uploads, authenticated pulls,
@@ -86,7 +95,8 @@ reviewed access-control/deployment policy. See
    code deployment, sessions, and revocation endpoint.
 3. Deploy an authenticated HTTPS service with a reviewed multi-instance
    transactional database, TLS termination, secrets, observability, backup,
-   retention, and disaster recovery.
+  retention, and disaster recovery. The local TLS boundary is qualified;
+  public/production infrastructure is not.
 4. Connect an authorized billing sandbox and independently review webhook and
    reconciliation policy.
 5. Obtain independent cryptographic/security approval and explicit approval for

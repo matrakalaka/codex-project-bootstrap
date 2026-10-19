@@ -9,6 +9,7 @@
   selected venv did not contain the optional `psycopg` dependency. The
   PostgreSQL-specific qualification was run separately against PostgreSQL 16
   and passed.
+- Optional PostgreSQL test with the isolated hosted dependency: **2 PASS**.
 - Bootstrap/security/continuity strict regression: **74 PASS**, **2 subtests PASS**.
 - AF_UNIX and loopback HTTP tests: included in the normal-host result above.
 
@@ -51,6 +52,10 @@ window was subsequently host-qualified in the 142-test result above.
   16. Two independent HTTP service processes shared one database; concurrent
   uploads, pulls, restart recovery, and backup/restore all passed. The exact
   command is `scripts/qualify_postgres_host.py` with a disposable DSN.
+- Local HTTPS boundary: **PASS** through a disposable loopback TLS
+  terminator; certificate validation and protected-request authentication were
+  exercised. Docker deployment: **NOT VERIFIED** because its daemon was
+  unavailable.
 
 ## Not qualified
 
